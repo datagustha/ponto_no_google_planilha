@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.spec
+*.toc
+*.pkg
+*.pyz
+warn-*.txt
+xref-*.html
+Analysis-*.toc
+EXE-*.toc
+PKG-*.toc
+PYZ-*.toc
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Seus arquivos sensíveis
+.env
+*.env
+config/credentials.json
+config/token.json
+
+# Arquivos grandes/desnecessários
+*.rar
+*.zip
+*.7z
+cam_ponto.rar
+LEIA-ME.txt
+
+# Executáveis (mantenha)
+*.exe
