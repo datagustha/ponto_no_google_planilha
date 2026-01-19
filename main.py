@@ -49,7 +49,7 @@ def callback_processar_funcionario(nome_funcionario, df_dados):
 
 if __name__ == "__main__":
     print("="*60)
-    print("🤖 BOT DE PONTO - INICIANDO")
+    print("🤖 BOT DE PONTO - INICIANDO...")
     print("="*60)
     
     print("\n🔐 Fazendo login no sistema...")
