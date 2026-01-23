@@ -8,10 +8,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import pandas as pd
 import time
-from dotenv import load_dotenv
+
 import os
 
-load_dotenv()
 
 def login():
     # 🔧 configurações
