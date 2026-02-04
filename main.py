@@ -1,6 +1,8 @@
+#%%
 # main.py - SOLUÇÃO SIMPLES
 import sys
 import os
+from dotenv import load_dotenv
 
 # CORREÇÃO CRÍTICA: Configurar caminho do .env ANTES de importar outros módulos
 def setup_env():

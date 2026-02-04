@@ -19,8 +19,8 @@ import time
 # inserir_dados.py
 import pandas as pd
 
-def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba):
-    """Versão corrigida - lida com nomes e DataFrames separados"""
+def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_linha=38):
+    """Versão corrigida - limpa até linha 38 para evitar dados antigos"""
     
     print(f"\n📤 Salvando dados na aba: '{nome_aba}'")
     print(f"📊 DataFrame com {len(df_ponto)} linhas")
@@ -36,24 +36,16 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba):
     
     # 👉 ADICIONE ESTA LINHA PARA VER OS DADOS ORIGINAIS
     print(f"\n🔍 DADOS ORIGINAIS DO DATAFRAME (primeiras 5 linhas):")
-    print(df_ponto.head().to_dict())
+    print(df_ponto.head().to_string(index=False))
     
     # Preparar dados
     dados_preparados = []
     
-    for idx, row in df_ponto.iterrows():  # 👉 Adicione idx para depuração
-        # 👉 ADICIONE DEPURAÇÃO PARA CADA LINHA
-        print(f"\n--- Processando linha {idx} ---")
-        
+    for idx, row in df_ponto.iterrows():
         # Extrair cada valor, com tratamento para valores nulos/vazios
         data = str(row.get('Data', '')).strip()
-
         BSaldo = row.get('BSaldo', '')
         BTotal = row.get('BTotal', '')
-        
-        # 👉 MOSTRAR VALORES ORIGINAIS
-        print(f"BSaldo original (tipo: {type(BSaldo)}): {repr(BSaldo)}")
-        print(f"BTotal original (tipo: {type(BTotal)}): {repr(BTotal)}")
         
         # Converter para string
         if isinstance(BSaldo, (list, tuple)):
@@ -65,114 +57,90 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba):
             BTotal = str(BTotal[0]) if BTotal else ''
         else:
             BTotal = str(BTotal)
-        
-        print(f"Depois de converter para string:")
-        print(f"BSaldo: {repr(BSaldo)}")
-        print(f"BTotal: {repr(BTotal)}")
 
-        # Limpar espaços E REMOVER APÓSTROFE se existir!
+        # Limpar espaços e apóstrofe
         BSaldo = BSaldo.strip()
         BTotal = BTotal.strip()
         
-        print(f"Depois de strip():")
-        print(f"BSaldo: {repr(BSaldo)}")
-        print(f"BTotal: {repr(BTotal)}")
-        
-        # 👉 REMOVER APÓSTROFE no início (se tiver)
+        # Remover apóstrofe no início (se tiver)
         if BSaldo.startswith("'"):
             BSaldo = BSaldo[1:].strip()
-            print(f"Depois de remover apóstrofe BSaldo: {repr(BSaldo)}")
         
         if BTotal.startswith("'"):
             BTotal = BTotal[1:].strip()
-            print(f"Depois de remover apóstrofe BTotal: {repr(BTotal)}")
 
-        # CORREÇÃO PRINCIPAL: Para valores negativos de tempo
-        # Se o valor começar com '-', manter como está
-        # Se começar com '+', remover o sinal
-        
+        # Tratamento de sinais
         if BSaldo:
             if BSaldo.startswith('+'):
                 BSaldo = BSaldo[1:]  # Remove o '+'
-                print(f"Depois de remover + BSaldo: {repr(BSaldo)}")
-            elif BSaldo.startswith('-'):
-                # Mantém o '-' 
-                print(f"BSaldo tem sinal negativo: {repr(BSaldo)}")
-                pass
-            # Limpar valores 'nan' ou 'NaT'
             elif BSaldo.lower() in ['nan', 'nat', 'none', '']:
                 BSaldo = ''
-                print(f"BSaldo era nan, agora: {repr(BSaldo)}")
         
         if BTotal:
             if BTotal.startswith('+'):
                 BTotal = BTotal[1:]  # Remove o '+'
-                print(f"Depois de remover + BTotal: {repr(BTotal)}")
-            elif BTotal.startswith('-'):
-                # Mantém o '-'
-                print(f"BTotal tem sinal negativo: {repr(BTotal)}")
-                pass
-            # Limpar valores 'nan' ou 'NaT'
             elif BTotal.lower() in ['nan', 'nat', 'none', '']:
                 BTotal = ''
-                print(f"BTotal era nan, agora: {repr(BTotal)}")
-        
-        # 👉 VERIFICAR SE AINDA TEM APÓSTROFE
-        if "'" in BSaldo:
-            print(f"⚠️  ATENÇÃO: BSaldo ainda contém apóstrofe!")
-        if "'" in BTotal:
-            print(f"⚠️  ATENÇÃO: BTotal ainda contém apóstrofe!")
         
         dados_preparados.append([data, BSaldo, BTotal])
-        
-        print(f"Valores finais para esta linha:")
-        print(f"data: {repr(data)}")
-        print(f"BSaldo: {repr(BSaldo)}")
-        print(f"BTotal: {repr(BTotal)}")
     
     print(f"\n📝 Dados preparados: {len(dados_preparados)} linhas")
     
-    # Definir range (começa na linha 6)
+    # 🔥 ALTERAÇÃO PRINCIPAL: Limpar até linha fixa
     linha_inicio = 6
-    if len(dados_preparados) > 0:
-        linha_fim = linha_inicio + len(dados_preparados) - 1
-        range_name = f"{nome_aba}!A{linha_inicio}:C{linha_fim}"
-        
-        print(f"\n🔍 Valores que serão enviados para o Google Sheets:")
-        for i, linha in enumerate(dados_preparados):
-            print(f"  Linha {linha_inicio + i}: {linha}")
-    else:
-        print("⚠️  Nenhum dado para inserir")
-        return None
+    linha_fim_dados = linha_inicio + len(dados_preparados) - 1
     
-    print(f"📍 Range: {range_name}")
+    # Define dois ranges diferentes:
+    # 1. Range para LIMPAR (até linha 38)
+    range_limpar = f"{nome_aba}!A{linha_inicio}:C{limpar_ate_linha}"
+    
+    # 2. Range para INSERIR (só onde tem dados)
+    range_inserir = f"{nome_aba}!A{linha_inicio}:C{linha_fim_dados}"
+    
+    print(f"\n📍 Range para limpar: {range_limpar}")
+    print(f"📍 Range para inserir: {range_inserir}")
     
     # Inserir dados no Google Sheets
     try:
         body = {'values': dados_preparados}
         
-        # Primeiro limpar o range existente (opcional)
+        # 🔥 PRIMEIRO: Limpar até a linha 38 (ou a linha que você definir)
+        print(f"🧹 Limpando de A6 até C{limpar_ate_linha}...")
         try:
             service.spreadsheets().values().clear(
                 spreadsheetId=spreadsheet_id,
-                range=range_name,
+                range=range_limpar,
                 body={}
             ).execute()
-            print("🧹 Range limpo antes da inserção")
-        except:
-            print("ℹ️  Não foi possível limpar range (pode ser novo)")
+            print(f"✅ Dados antigos limpos até linha {limpar_ate_linha}")
+        except Exception as e:
+            print(f"⚠️  Não foi possível limpar completamente: {e}")
         
-        # Mude de volta para USER_ENTERED para interpretar tempo corretamente!
+        # 🔥 SEGUNDO: Inserir os novos dados
+        print(f"📝 Inserindo {len(dados_preparados)} linhas de dados...")
         result = service.spreadsheets().values().update(
             spreadsheetId=spreadsheet_id,
-            range=range_name,
-            valueInputOption="USER_ENTERED",  # 👈 VOLTE para USER_ENTERED!
+            range=range_inserir,
+            valueInputOption="USER_ENTERED",
             body=body
         ).execute()
         
         updated_cells = result.get('updatedCells', 0)
         print(f"✅ {nome_aba}: {updated_cells} células atualizadas")
-        print(f"   Linhas {linha_inicio} a {linha_fim} preenchidas")
+        print(f"   Dados inseridos nas linhas {linha_inicio} a {linha_fim_dados}")
+        
+        # 🔥 OPCIONAL: Se quiser também limpar o que sobrar entre os dados e linha 38
+        if linha_fim_dados < limpar_ate_linha:
+            range_sobra = f"{nome_aba}!A{linha_fim_dados + 1}:C{limpar_ate_linha}"
+            try:
+                service.spreadsheets().values().clear(
+                    spreadsheetId=spreadsheet_id,
+                    range=range_sobra,
+                    body={}
+                ).execute()
+                print(f"🧹 Limpando sobra: linhas {linha_fim_dados + 1} a {limpar_ate_linha}")
+            except:
+                pass
         
         return result
         
