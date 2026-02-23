@@ -2,9 +2,8 @@ name: Executar Ponto Google Planilha
 
 on:
   schedule:
-    # TESTE: Rodar hoje às 11:35 Brasília (14:35 UTC)
     - cron: '35 14 * * *'
-  workflow_dispatch:  # Permite executar manualmente também
+  workflow_dispatch:
 
 jobs:
   executar-ponto:
@@ -26,8 +25,3 @@ jobs:
         
     - name: Executar script principal
       run: python main.py
-      
-    - name: Mostrar horário da execução
-      run: |
-        echo "Executado em: $(date)"
-        echo "Horário UTC: $(date -u)"
