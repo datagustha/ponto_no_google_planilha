@@ -45,7 +45,7 @@ jobs:
       
     - name: Upload dos resultados do teste
       if: always()  # Mesmo se falhar, faz upload
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: resultados-teste
         path: |
