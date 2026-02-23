@@ -1,0 +1,13 @@
+print("=" * 50)
+print("🚀 TESTE DO GITHUB ACTIONS")
+print("=" * 50)
+print(f"Horário da execução: {__import__('datetime').datetime.now()}")
+print("✅ Se você está vendo isso, o GitHub Actions está funcionando perfeitamente!")
+print("📁 Diretório atual:", __import__('os').getcwd())
+print("📂 Arquivos no diretório:", __import__('os').listdir('.'))
+print("=" * 50)
+
+# Criar um arquivo de log para teste
+with open('log_teste.txt', 'w') as f:
+    f.write(f"Teste executado em: {__import__('datetime').datetime.now()}")
+print("✅ Arquivo de log criado com sucesso!")
