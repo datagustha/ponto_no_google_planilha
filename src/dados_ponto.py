@@ -331,134 +331,51 @@ def avancar_funcionario(navegador):
 
 
 def extrair_dados(navegador):
-    """Extrai os dados da tabela do funcionário atual - VERSÃO CORRIGIDA PARA GITHUB ACTIONS"""
+    """Extrai os dados da tabela - VERSÃO FUNCIONAL"""
     try:
         print("🔍 Extraindo dados...")
         
-        # Aguardar a tabela carregar
         WebDriverWait(navegador, 15).until(
             EC.presence_of_element_located((By.CLASS_NAME, "tabela-calculos-wrapper"))
         )
-        time.sleep(2)  # Esperar renderização
+        time.sleep(2)
         
-        # 🔥 JAVASCRIPT PARA EXTRAIR DADOS (MAIS CONFIÁVEL)
         script = """
-        function extrairDadosTabela() {
+        function extrairDados() {
             const linhas = document.querySelectorAll('.tabela-calculos-wrapper tbody tr');
             const dados = [];
             
             for (let linha of linhas) {
                 const celulas = linha.querySelectorAll('td');
-                if (celulas.length >= 3) {
-                    // Pega o texto visível de cada célula
-                    const data = celulas[0]?.innerText?.trim() || '';
-                    const bSaldo = celulas[1]?.innerText?.trim() || '';
-                    const bTotal = celulas[2]?.innerText?.trim() || '';
+                if (celulas.length >= 20) {
+                    const data = celulas[2]?.innerText?.trim() || '';
+                    const bSaldo = celulas[18]?.innerText?.trim() || '';
+                    const bTotal = celulas[19]?.innerText?.trim() || '';
                     
-                    // Só adiciona se tiver data (ignora linhas vazias)
-                    if (data && data !== '' && data !== 'NaN' && data.toLowerCase() !== 'nan') {
+                    if (data && data !== '') {
                         dados.push([data, bSaldo, bTotal]);
                     }
                 }
             }
-            
             return dados;
         }
-        return extrairDadosTabela();
+        return extrairDados();
         """
         
-        # Executar JavaScript
-        dados_extraidos = navegador.execute_script(script)
+        dados = navegador.execute_script(script)
+        print(f"✅ Encontrou {len(dados)} linhas")
         
-        print(f"✅ JavaScript extraiu {len(dados_extraidos)} linhas")
-        
-        if dados_extraidos:
-            # Converter para DataFrame
-            df = pd.DataFrame(dados_extraidos, columns=["Data", "BSaldo", "BTotal"])
-            
-            # 🔥 TRATAR NaN - substituir por string vazia
-            df = df.fillna('')
-            df = df.replace('nan', '', regex=False)
-            df = df.replace('NaN', '', regex=False)
-            
-            print(f"📊 DataFrame final: {len(df)} linhas")
-            if not df.empty:
-                print("\nPrimeiras 5 linhas:")
-                print(df.head().to_string(index=False))
-                print(f"\n📅 Exemplo de data: '{df.iloc[0]['Data']}'")
-            
+        if dados:
+            df = pd.DataFrame(dados, columns=["Data", "BSaldo", "BTotal"])
+            df['BSaldo'] = df['BSaldo'].str.replace('+', '')
+            df['BTotal'] = df['BTotal'].str.replace('+', '')
             return df
         
-        # Se JavaScript falhar, tentar método pandas
-        print("⚠️ JavaScript não retornou dados, tentando pandas...")
-        return extrair_dados_pandas(navegador)
-        
-    except Exception as e:
-        print(f"❌ Erro no extrair_dados: {e}")
-        return extrair_dados_pandas(navegador)
-
-
-def extrair_dados_pandas(navegador):
-    """Método alternativo usando pandas (fallback)"""
-    try:
-        print("🔍 Tentando método pandas...")
-        
-        tabela = WebDriverWait(navegador, 10).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "tabela-calculos-wrapper"))
-        )
-        html_tabela = tabela.get_attribute("outerHTML")
-        
-        # Salvar HTML para debug no GitHub Actions
-        if MODO_GITHUB:
-            with open(f"debug_tabela_{datetime.now().strftime('%H%M%S')}.html", "w", encoding="utf-8") as f:
-                f.write(html_tabela)
-        
-        dfs = pd.read_html(html_tabela, flavor='html5lib')
-        
-        if not dfs:
-            return pd.DataFrame()
-        
-        df = dfs[0]
-        
-        # Identificar colunas
-        df_final = pd.DataFrame()
-        
-        # Se tiver 3 colunas, assumir ordem padrão
-        if len(df.columns) >= 3:
-            df_final['Data'] = df.iloc[:, 0].astype(str)
-            df_final['BSaldo'] = df.iloc[:, 1].astype(str)
-            df_final['BTotal'] = df.iloc[:, 2].astype(str)
-        else:
-            # Tentar mapear por nome
-            for col in df.columns:
-                col_str = str(col).lower()
-                if 'data' in col_str:
-                    df_final['Data'] = df[col].astype(str)
-                elif 'bsaldo' in col_str or 'saldo' in col_str:
-                    df_final['BSaldo'] = df[col].astype(str)
-                elif 'btotal' in col_str or 'total' in col_str:
-                    df_final['BTotal'] = df[col].astype(str)
-        
-        # Garantir colunas
-        for col in ['Data', 'BSaldo', 'BTotal']:
-            if col not in df_final.columns:
-                df_final[col] = ''
-        
-        # 🔥 TRATAR NaN
-        df_final = df_final.replace('nan', '', regex=False)
-        df_final = df_final.replace('NaN', '', regex=False)
-        df_final = df_final.fillna('')
-        
-        # Remover linhas sem data
-        df_final = df_final[df_final['Data'] != '']
-        
-        print(f"📊 Método pandas: {len(df_final)} linhas")
-        return df_final[['Data', 'BSaldo', 'BTotal']]
-        
-    except Exception as e:
-        print(f"❌ Erro no método pandas: {e}")
         return pd.DataFrame()
-
+        
+    except Exception as e:
+        print(f"❌ Erro: {e}")
+        return pd.DataFrame()
 
 def processar_todos_funcionarios(navegador, callback_processar, max_tentativas=40):
     """Processa funcionários com limite de tentativas"""

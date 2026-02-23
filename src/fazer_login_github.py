@@ -1,24 +1,22 @@
-# src/fazer_login_github.py - VERSÃO CORRIGIDA (sem webdriver-manager)
+# src/fazer_login_github.py - VERSÃO PARA GITHUB ACTIONS
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import time
 import os
 
 def login_github_actions():
     """
-    Versão do login otimizada para GitHub Actions
-    SEM webdriver-manager - usa ChromeDriver do sistema
+    Versão do login para GitHub Actions (headless)
     """
     print("=" * 50)
     print("🔧 CONFIGURANDO CHROME PARA GITHUB ACTIONS")
     print("=" * 50)
     
-    # Configurações específicas para GitHub Actions
+    # Configurações headless para GitHub Actions
     chrome_options = Options()
     chrome_options.add_argument('--headless=new')
     chrome_options.add_argument('--no-sandbox')
@@ -30,76 +28,63 @@ def login_github_actions():
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
     
-    # No GitHub Actions, o ChromeDriver já está no PATH
-    print("🚀 Iniciando Chrome (usando ChromeDriver do sistema)...")
-    
-    # NÃO usar Service, apenas options
+    print("🚀 Iniciando Chrome headless...")
     navegador = webdriver.Chrome(options=chrome_options)
     
-    # Esconder que é automação
+    # Esconder automação
     navegador.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     
-    # Acessar o site
-    print("🌐 Acessando Secullum Ponto Web...")
-    navegador.get("https://pontoweb.secullum.com.br/#/cartao-ponto")
-    time.sleep(3)
+    # Acessar site
+    print("🌐 Acessando site...")
+    navegador.get("https://pontoweb.secullum.com.br/")
+    time.sleep(5)
     
-    # Aguardar carregamento
+    # Tentar clicar no botão "Acessar ponto Web" se existir
     try:
-        print("⏳ Aguardando site carregar...")
-        aguardar_site = WebDriverWait(navegador, 15).until(
-            EC.presence_of_element_located((By.XPATH, "//a[contains(., 'Acessar Ponto Web')]"))
+        print("🔍 Procurando botão 'Acessar ponto Web'...")
+        botao_acessar = WebDriverWait(navegador, 5).until(
+            EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Acessar ponto Web')]"))
         )
-        print("✅ Site carregado com sucesso")
-        
-        print("🖱 Clicando em Acessar Ponto Web...")
-        aguardar_site.click()
-        time.sleep(2)
-        
-    except TimeoutException:
-        print("❌ Timeout ao carregar site")
-        try:
-            elemento_acessar = navegador.find_element(By.XPATH, "//a[contains(., 'Acessar Ponto Web')]")
-            elemento_acessar.click()
-            print("✅ Conseguiu clicar no botão")
-        except Exception as e:
-            print(f"❌ Não conseguiu clicar: {e}")
-            return None
+        botao_acessar.click()
+        print("✅ Clicou no botão Acessar ponto Web")
+        time.sleep(3)
+    except (TimeoutException, NoSuchElementException):
+        print("ℹ️ Botão não encontrado, continuando...")
     
-    # Login
+    # LOGIN
     print("\n🔐 FAZENDO LOGIN...")
     
     try:
-        # Campo de email
-        campo_login = WebDriverWait(navegador, 10).until(
+        # Email
+        campo_email = WebDriverWait(navegador, 10).until(
             EC.presence_of_element_located((By.ID, "Email"))
         )
-        login_usuario = os.getenv("EMAIL_SISTEMA")
-        campo_login.send_keys(login_usuario)
-        print(f"✅ Login inserido: {login_usuario[:3]}...")
+        campo_email.send_keys(os.getenv("EMAIL_SISTEMA"))
+        print("✅ Email inserido")
         
-        # Campo de senha
+        # Senha
         campo_senha = navegador.find_element(By.ID, "Senha")
-        senha_usuario = os.getenv("SENHA_SISTEMA")
-        campo_senha.send_keys(senha_usuario)
+        campo_senha.send_keys(os.getenv("SENHA_SISTEMA"))
         print("✅ Senha inserida")
         
-        # Botão entrar
-        navegador.find_element(By.ID, "login").click()
-        print("🖱 Clicou no botão Entrar")
-        time.sleep(3)
+        # Botão Entrar
+        botao = navegador.find_element(By.ID, "login")
+        botao.click()
+        print("🖱 Clicou em Entrar")
+        
+        time.sleep(5)
         
         # Fechar popup se aparecer
         try:
-            popup = WebDriverWait(navegador, 5).until(
+            popup = WebDriverWait(navegador, 3).until(
                 EC.element_to_be_clickable((By.ID, "modal-portaria-671-ok"))
             )
             popup.click()
             print("✅ Popup fechado")
         except:
-            print("ℹ️ Nenhum popup encontrado")
+            pass
         
-        print("✅ LOGIN REALIZADO COM SUCESSO!")
+        print("✅ LOGIN REALIZADO!")
         return navegador
         
     except Exception as e:
