@@ -18,10 +18,16 @@ jobs:
       with:
         python-version: '3.10'
         
+    - name: Criar arquivo .env a partir do secret
+      run: |
+        echo "${{ secrets.DOTENV }}" > .env
+        echo "✅ Arquivo .env criado com sucesso"
+        
     - name: Instalar dependências
       run: |
         pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Executar script principal
-      run: python main.py
+    - name: Executar script principal (sem input)
+      run: python main.py --no-input
+      # OU, se não tiver essa flag, vamos modificar o script
