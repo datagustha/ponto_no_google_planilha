@@ -1,20 +1,18 @@
-# src/fazer_login_github.py
+# src/fazer_login_github.py - VERSÃO CORRIGIDA (sem webdriver-manager)
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-from webdriver_manager.chrome import ChromeDriverManager
 import time
 import os
 
 def login_github_actions():
     """
     Versão do login otimizada para GitHub Actions
-    com Chrome em modo headless
+    SEM webdriver-manager - usa ChromeDriver do sistema
     """
     print("=" * 50)
     print("🔧 CONFIGURANDO CHROME PARA GITHUB ACTIONS")
@@ -22,7 +20,7 @@ def login_github_actions():
     
     # Configurações específicas para GitHub Actions
     chrome_options = Options()
-    chrome_options.add_argument('--headless=new')  # Modo headless (sem interface)
+    chrome_options.add_argument('--headless=new')
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_argument('--disable-gpu')
@@ -32,12 +30,13 @@ def login_github_actions():
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
     
-    # Inicializar o navegador
-    print("🚀 Iniciando Chrome...")
-    service = Service(ChromeDriverManager().install())
-    navegador = webdriver.Chrome(service=service, options=chrome_options)
+    # No GitHub Actions, o ChromeDriver já está no PATH
+    print("🚀 Iniciando Chrome (usando ChromeDriver do sistema)...")
     
-    # Executar JavaScript para esconder que é automação
+    # NÃO usar Service, apenas options
+    navegador = webdriver.Chrome(options=chrome_options)
+    
+    # Esconder que é automação
     navegador.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     
     # Acessar o site
@@ -47,27 +46,24 @@ def login_github_actions():
     
     # Aguardar carregamento
     try:
-        # Verificar se o site carregou
         print("⏳ Aguardando site carregar...")
         aguardar_site = WebDriverWait(navegador, 15).until(
             EC.presence_of_element_located((By.XPATH, "//a[contains(., 'Acessar Ponto Web')]"))
         )
         print("✅ Site carregado com sucesso")
         
-        # Clicar em acessar ponto web
         print("🖱 Clicando em Acessar Ponto Web...")
         aguardar_site.click()
         time.sleep(2)
         
     except TimeoutException:
         print("❌ Timeout ao carregar site")
-        # Tenta encontrar o elemento de qualquer forma
         try:
             elemento_acessar = navegador.find_element(By.XPATH, "//a[contains(., 'Acessar Ponto Web')]")
             elemento_acessar.click()
             print("✅ Conseguiu clicar no botão")
-        except:
-            print("❌ Não conseguiu clicar")
+        except Exception as e:
+            print(f"❌ Não conseguiu clicar: {e}")
             return None
     
     # Login
