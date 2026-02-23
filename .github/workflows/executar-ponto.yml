@@ -1,0 +1,39 @@
+name: Executar Ponto
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 11 * * 1-5'
+
+jobs:
+  executar:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Instalar Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+      
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+      
+      - name: Configurar credenciais
+        env:
+          TOKEN: ${{ secrets.GOOGLE_TOKEN_JSON }}
+        run: |
+          mkdir -p config
+          echo "$TOKEN" > config/token.json
+          echo "EMAIL_SISTEMA=${{ secrets.EMAIL_SISTEMA }}" >> .env
+          echo "SENHA_SISTEMA=${{ secrets.SENHA_SISTEMA }}" >> .env
+          echo "GOOGLE_SHEETS_ID=${{ secrets.GOOGLE_SHEETS_ID }}" >> .env
+      
+      - name: Executar
+        run: python main.py
