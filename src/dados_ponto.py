@@ -331,34 +331,93 @@ def avancar_funcionario(navegador):
 
 
 def extrair_dados(navegador):
-    """Extrai os dados da tabela do funcionário atual"""
+    """Extrai os dados da tabela do funcionário atual - VERSÃO CORRIGIDA"""
     try:
-        tabela = WebDriverWait(navegador, 10).until(
+        print("\n🔍 Extraindo dados da tabela...")
+        
+        # Aguardar tabela carregar
+        tabela = WebDriverWait(navegador, 15).until(
             EC.presence_of_element_located((By.CLASS_NAME, "tabela-calculos-wrapper"))
         )
         print("✅ Tabela encontrada!")
 
+        # Pegar HTML da tabela
         html_tabela = tabela.get_attribute("innerHTML")
-        dfs = pd.read_html(html_tabela)
-
-        if not dfs:
-            print("❌ Nenhuma tabela no HTML")
+        
+        # Ler TODAS as tabelas do HTML
+        todas_tabelas = pd.read_html(html_tabela)
+        print(f"📊 Encontradas {len(todas_tabelas)} tabelas no HTML")
+        
+        if not todas_tabelas:
+            print("❌ Nenhuma tabela encontrada")
             return pd.DataFrame()
-
-        df = dfs[0]
-        colunas_necessarias = ["Data", "BSaldo", "BTotal"]
-
-        df_final = pd.DataFrame()
-        for col in colunas_necessarias:
-            if col in df.columns:
-                df_final[col] = df[col]
-            else:
-                df_final[col] = ""
-
-        print(f"📊 Dados extraídos: {len(df_final)} linhas")
+        
+        # A tabela que queremos é a ÚLTIMA (ou a que tem 'Data' nas colunas)
+        tabela_correta = None
+        
+        # Estratégia 1: Pegar a última tabela (geralmente é a de dados)
+        tabela_correta = todas_tabelas[-1]
+        print("✅ Usando a última tabela encontrada")
+        
+        # Estratégia 2: (fallback) Procurar tabela com colunas 'Data'
+        if 'Data' not in tabela_correta.columns and len(todas_tabelas) > 1:
+            for i, df in enumerate(todas_tabelas):
+                if 'Data' in df.columns or 'BSaldo' in df.columns:
+                    print(f"✅ Tabela {i} tem colunas de dados")
+                    tabela_correta = df
+                    break
+        
+        df = tabela_correta
+        print(f"📊 Colunas da tabela selecionada: {list(df.columns)}")
+        
+        # Limpar dados
+        # Remover linhas onde Data é NaN ou vazia
+        if 'Data' in df.columns:
+            df = df[df['Data'].notna()]
+            df = df[df['Data'].astype(str).str.strip() != '']
+            df = df[~df['Data'].astype(str).str.contains('Total|Média', case=False, na=False)]
+        
+        # Renomear colunas se necessário
+        mapeamento = {}
+        for col in df.columns:
+            col_str = str(col).strip()
+            if 'Data' in col_str or 'DIA' in col_str.upper():
+                mapeamento[col] = 'Data'
+            elif 'BSaldo' in col_str or 'SALDO' in col_str.upper() or 'BANCO' in col_str.upper():
+                mapeamento[col] = 'BSaldo'
+            elif 'BTotal' in col_str or 'TOTAL' in col_str.upper() or 'JORNADA' in col_str.upper():
+                mapeamento[col] = 'BTotal'
+        
+        if mapeamento:
+            df = df.rename(columns=mapeamento)
+        
+        # Garantir colunas necessárias
+        for col in ['Data', 'BSaldo', 'BTotal']:
+            if col not in df.columns:
+                df[col] = ''
+        
+        # Manter só as colunas que importam
+        df_final = df[['Data', 'BSaldo', 'BTotal']].copy()
+        
+        # Remover linhas totalmente vazias
+        df_final = df_final.dropna(how='all')
+        
+        print(f"\n📊 Dados extraídos: {len(df_final)} linhas válidas")
+        if not df_final.empty:
+            print("\n📋 Primeiras 3 linhas:")
+            print(df_final.head(3).to_string(index=False))
+            
+            # Debug: salvar CSV no GitHub Actions
+            if os.getenv('GITHUB_ACTIONS') == 'true':
+                df_final.to_csv('dados_extraidos_debug.csv', index=False)
+                print("💾 Dados salvos para debug")
+        
         return df_final
+
     except Exception as e:
         print(f"❌ Erro ao extrair dados: {e}")
+        import traceback
+        traceback.print_exc()
         return pd.DataFrame()
 
 
