@@ -10,30 +10,60 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v3
+      - name: 📥 Pegar código
+        uses: actions/checkout@v3
       
-      - name: Python
+      - name: 🐍 Configurar Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
       
-      - name: Instalar Chrome
+      - name: 🌐 Instalar Chrome
         run: |
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
+          google-chrome --version
       
-      - name: Instalar dependências
-        run: pip install -r requirements.txt
-      
-      - name: Configurar credenciais
-        env:
-          TOKEN: ${{ secrets.GOOGLE_TOKEN_JSON }}
+      - name: 📦 Instalar dependências Python
         run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: 🔑 Configurar credenciais
+        run: |
+          # Criar pasta config
           mkdir -p config
-          echo "$TOKEN" > config/token.json
+          
+          # Token do Google (obrigatório)
+          echo '${{ secrets.GOOGLE_TOKEN_JSON }}' > config/token.json
+          
+          # Credentials (opcional - se precisar)
+          echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > config/credentials.json
+          
+          # Arquivo .env com as credenciais
           echo "EMAIL_SISTEMA=${{ secrets.EMAIL_SISTEMA }}" >> .env
           echo "SENHA_SISTEMA=${{ secrets.SENHA_SISTEMA }}" >> .env
           echo "GOOGLE_SHEETS_ID=${{ secrets.GOOGLE_SHEETS_ID }}" >> .env
+          
+          # Verificar se arquivos foram criados
+          echo "✅ Arquivos criados:"
+          ls -la config/
+          ls -la .env
       
-      - name: Executar
+      - name: 🤖 Executar bot
+        env:
+          GITHUB_ACTIONS: true
         run: python main.py
+      
+      - name: 📤 Upload de logs (se falhar)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-erro
+          path: |
+            *.html
+            *.png
+            *.csv
+            debug_*
+            config/token.json
+          retention-days: 7
