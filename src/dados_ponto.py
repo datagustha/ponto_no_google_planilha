@@ -162,129 +162,68 @@ def periodo_pop_up(navegador):
 
 # 🔥 CORREÇÃO: ADICIONAR O DEF QUE ESTAVA FALTANDO
 def configurar_datas_com_javascript_agressivo(navegador):
-    """Configura datas usando JavaScript MUITO agressivo - 100% confiável"""
+    """Configura datas usando JavaScript - AGORA NO FORMATO BR"""
     
     hoje = datetime.now()
     ontem = hoje - timedelta(days=1)
     
-    # FORMATO AMERICANO (MM/DD/YYYY) para enviar ao site
-    data_inicio_us = f"{hoje.month:02d}/01/{hoje.year}"
-    data_fim_us = f"{ontem.month:02d}/{ontem.day:02d}/{ontem.year}"
-    
-    # FORMATO BRASILEIRO (DD/MM/YYYY) só para exibição
+    # FORMATO BRASILEIRO (DD/MM/YYYY) que o site ENTENDE e MOSTRA
     data_inicio_br = f"01/{hoje.month:02d}/{hoje.year}"
     data_fim_br = f"{ontem.day:02d}/{ontem.month:02d}/{ontem.year}"
     
     print("=" * 50)
-    print("📅 CONFIGURANDO DATAS VIA JAVASCRIPT AGRESSIVO")
-    print(f"Data início (BR): {data_inicio_br} → Enviando (US): {data_inicio_us}")
-    print(f"Data fim (BR): {data_fim_br} → Enviando (US): {data_fim_us}")
+    print("📅 CONFIGURANDO DATAS VIA JAVASCRIPT (FORMATO BR)")
+    print(f"Data início: {data_inicio_br}")
+    print(f"Data fim: {data_fim_br}")
     print("=" * 50)
     
     try:
-        # Primeiro, garantir que os elementos existem
-        print("🔍 Verificando se os campos existem...")
-        
-        # Verificar data início
-        campo_inicio = WebDriverWait(navegador, 10).until(
-            EC.presence_of_element_located((By.ID, "dataInicio"))
-        )
-        print(f"✅ Campo dataInicio encontrado: {campo_inicio.get_attribute('id')}")
-        
-        # Verificar data fim
-        campo_fim = WebDriverWait(navegador, 10).until(
-            EC.presence_of_element_located((By.ID, "dataFim"))
-        )
-        print(f"✅ Campo dataFim encontrado: {campo_fim.get_attribute('id')}")
-        
-        # Script JavaScript mais simples e seguro
+        # Script JavaScript para setar as datas no formato BR
         script = f"""
-        // Função para setar data de forma segura
-        function setDataSegura(id, valor) {{
-            try {{
-                var campo = document.getElementById(id);
-                if (!campo) return {{ erro: 'Campo ' + id + ' não encontrado' }};
-                
-                console.log('Setando ' + id + ' = ' + valor);
-                
-                // Limpar
-                campo.value = '';
-                campo.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                
-                // Setar valor
-                campo.value = valor;
-                campo.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                campo.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                
-                return {{ sucesso: true, valor: campo.value }};
-            }} catch(e) {{
-                return {{ erro: e.toString() }};
-            }}
+        // Função para setar data
+        function setData(id, valor) {{
+            var campo = document.getElementById(id);
+            if (!campo) return false;
+            
+            campo.focus();
+            campo.value = valor;
+            campo.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            campo.dispatchEvent(new Event('change', {{ bubbles: true }}));
+            campo.blur();
+            
+            return true;
         }}
         
-        // Setar ambas as datas
-        var resultadoInicio = setDataSegura('dataInicio', '{data_inicio_us}');
-        var resultadoFim = setDataSegura('dataFim', '{data_fim_us}');
+        // Setar datas
+        setData('dataInicio', '{data_inicio_br}');
+        setData('dataFim', '{data_fim_br}');
         
-        // Retornar resultado
         return {{
-            inicio: document.getElementById('dataInicio')?.value || null,
-            fim: document.getElementById('dataFim')?.value || null,
-            statusInicio: resultadoInicio,
-            statusFim: resultadoFim
+            inicio: document.getElementById('dataInicio')?.value,
+            fim: document.getElementById('dataFim')?.value
         }};
         """
         
         resultado = navegador.execute_script(script)
         
-        print(f"\n🔍 RESULTADO DO JAVASCRIPT:")
-        print(f"📋 Data início: '{resultado.get('inicio', 'None')}'")
-        print(f"📋 Data fim: '{resultado.get('fim', 'None')}'")
+        print(f"\n🔍 RESULTADO:")
+        print(f"📋 Data início: '{resultado.get('inicio')}'")
+        print(f"📋 Data fim: '{resultado.get('fim')}'")
         
-        # Print para ver visualmente
+        # Print para ver
         time.sleep(2)
         tirar_print(navegador, "02_datas_configuradas.png", "(após configurar datas)")
         
-        # Verificar se funcionou (comparando com o valor US esperado)
-        if resultado.get('fim') == data_fim_us:
-            print("✅✅✅ DATAS CONFIGURADAS COM SUCESSO (formato US)!")
+        # Verificar se as datas estão no formato esperado
+        if resultado.get('inicio') == data_inicio_br and resultado.get('fim') == data_fim_br:
+            print("✅✅✅ DATAS CONFIGURADAS COM SUCESSO!")
             return True
         else:
-            print(f"⚠️ Data fim esperada: '{data_fim_us}', obtida: '{resultado.get('fim')}'")
-            
-            # TENTATIVA 2: Abordagem direta com Selenium (sem JavaScript)
-            print("\n🔄 Tentativa 2: Usando Selenium diretamente...")
-            
-            try:
-                # Limpar campo
-                campo_fim = navegador.find_element(By.ID, "dataFim")
-                campo_fim.clear()
-                campo_fim.send_keys(Keys.CONTROL + "a")
-                campo_fim.send_keys(Keys.DELETE)
-                time.sleep(1)
-                
-                # Digitar no formato US
-                campo_fim.send_keys(data_fim_us)
-                time.sleep(1)
-                campo_fim.send_keys(Keys.TAB)
-                time.sleep(1)
-                
-                valor_fim = campo_fim.get_attribute("value")
-                print(f"📋 Data fim após digitação: '{valor_fim}'")
-                
-                if valor_fim == data_fim_us:
-                    print("✅ Sucesso com digitação direta!")
-                    return True
-            except Exception as e:
-                print(f"❌ Erro na digitação direta: {e}")
-            
+            print("⚠️ Datas não configuradas corretamente")
             return False
             
     except Exception as e:
-        print(f"❌ Erro no JavaScript agressivo: {e}")
-        import traceback
-        traceback.print_exc()
-        tirar_print(navegador, "02_erro_datas.png", "(erro ao configurar datas)")
+        print(f"❌ Erro: {e}")
         return False
 
 
