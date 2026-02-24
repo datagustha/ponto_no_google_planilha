@@ -160,6 +160,7 @@ def periodo_pop_up(navegador):
         print(f"⚠️ Erro ao verificar popup: {e}")
         return False
 
+# 🔥 CORREÇÃO: ADICIONAR O DEF QUE ESTAVA FALTANDO
 def configurar_datas_com_javascript_agressivo(navegador):
     """Configura datas usando JavaScript MUITO agressivo - 100% confiável"""
     
