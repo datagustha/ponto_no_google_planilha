@@ -160,7 +160,6 @@ def periodo_pop_up(navegador):
         print(f"⚠️ Erro ao verificar popup: {e}")
         return False
 
-
 def configurar_datas_com_javascript_agressivo(navegador):
     """Configura datas usando JavaScript MUITO agressivo - 100% confiável"""
     
@@ -182,108 +181,108 @@ def configurar_datas_com_javascript_agressivo(navegador):
     print("=" * 50)
     
     try:
-        # Script JavaScript super agressivo
+        # Primeiro, garantir que os elementos existem
+        print("🔍 Verificando se os campos existem...")
+        
+        # Verificar data início
+        campo_inicio = WebDriverWait(navegador, 10).until(
+            EC.presence_of_element_located((By.ID, "dataInicio"))
+        )
+        print(f"✅ Campo dataInicio encontrado: {campo_inicio.get_attribute('id')}")
+        
+        # Verificar data fim
+        campo_fim = WebDriverWait(navegador, 10).until(
+            EC.presence_of_element_located((By.ID, "dataFim"))
+        )
+        print(f"✅ Campo dataFim encontrado: {campo_fim.get_attribute('id')}")
+        
+        # Script JavaScript mais simples e seguro
         script = f"""
-        (function() {{
-            console.log("🔄 Iniciando configuração agressiva de datas...");
-            
-            function dispararTodosEventos(elemento) {{
-                if (!elemento) return;
+        // Função para setar data de forma segura
+        function setDataSegura(id, valor) {{
+            try {{
+                var campo = document.getElementById(id);
+                if (!campo) return {{ erro: 'Campo ' + id + ' não encontrado' }};
                 
-                // Disparar TODOS os eventos possíveis
-                var eventos = ['input', 'change', 'blur', 'keyup', 'keydown', 'keypress', 'focus'];
-                eventos.forEach(function(tipo) {{
-                    try {{
-                        var evento = new Event(tipo, {{ bubbles: true, cancelable: true }});
-                        elemento.dispatchEvent(evento);
-                    }} catch(e) {{}}
-                }});
+                console.log('Setando ' + id + ' = ' + valor);
                 
-                // Se for React, atualizar tracker
-                if (elemento._valueTracker) {{
-                    elemento._valueTracker.setValue(elemento.value);
-                }}
+                // Limpar
+                campo.value = '';
+                campo.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                
+                // Setar valor
+                campo.value = valor;
+                campo.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                campo.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                
+                return {{ sucesso: true, valor: campo.value }};
+            }} catch(e) {{
+                return {{ erro: e.toString() }};
             }}
-            
-            // 1️⃣ DATA INÍCIO
-            var inicio = document.getElementById('dataInicio');
-            if (inicio) {{
-                inicio.focus();
-                inicio.value = '';  // Limpar
-                inicio.value = '{data_inicio_us}';
-                dispararTodosEventos(inicio);
-                inicio.blur();
-                console.log("✅ Data início setada:", inicio.value);
-            }}
-            
-            // 2️⃣ DATA FIM
-            var fim = document.getElementById('dataFim');
-            if (fim) {{
-                fim.focus();
-                fim.value = '';  // Limpar
-                fim.value = '{data_fim_us}';
-                dispararTodosEventos(fim);
-                fim.blur();
-                console.log("✅ Data fim setada:", fim.value);
-            }}
-            
-            // 3️⃣ VERIFICAÇÃO
-            return {{
-                inicio: document.getElementById('dataInicio')?.value || 'não encontrado',
-                fim: document.getElementById('dataFim')?.value || 'não encontrado'
-            }};
-        }})();
+        }}
+        
+        // Setar ambas as datas
+        var resultadoInicio = setDataSegura('dataInicio', '{data_inicio_us}');
+        var resultadoFim = setDataSegura('dataFim', '{data_fim_us}');
+        
+        // Retornar resultado
+        return {{
+            inicio: document.getElementById('dataInicio')?.value || null,
+            fim: document.getElementById('dataFim')?.value || null,
+            statusInicio: resultadoInicio,
+            statusFim: resultadoFim
+        }};
         """
         
-        # Executar script
         resultado = navegador.execute_script(script)
         
-        print(f"\n🔍 VERIFICAÇÃO APÓS JAVASCRIPT:")
-        print(f"📋 Data início no campo: '{resultado['inicio']}'")
-        print(f"📋 Data fim no campo: '{resultado['fim']}'")
+        print(f"\n🔍 RESULTADO DO JAVASCRIPT:")
+        print(f"📋 Data início: '{resultado.get('inicio', 'None')}'")
+        print(f"📋 Data fim: '{resultado.get('fim', 'None')}'")
         
         # Print para ver visualmente
+        time.sleep(2)
         tirar_print(navegador, "02_datas_configuradas.png", "(após configurar datas)")
         
-        # Verificar se está no formato americano (que o site aceita)
-        if resultado['fim'] == data_fim_us:
+        # Verificar se funcionou (comparando com o valor US esperado)
+        if resultado.get('fim') == data_fim_us:
             print("✅✅✅ DATAS CONFIGURADAS COM SUCESSO (formato US)!")
-            
-            # AGORA CONVERTEMOS OS DADOS PARA BR QUANDO SALVARMOS NA PLANILHA
-            print(f"📌 LEMBRETE: Os dados serão convertidos para formato BR ao salvar na planilha")
             return True
         else:
-            print(f"⚠️ Data fim esperada: '{data_fim_us}', obtida: '{resultado['fim']}'")
+            print(f"⚠️ Data fim esperada: '{data_fim_us}', obtida: '{resultado.get('fim')}'")
             
-            # TENTATIVA 2: Abordagem ainda mais agressiva
-            print("\n🔄 Tentativa 2: Abordagem com timeout e múltiplas tentativas...")
+            # TENTATIVA 2: Abordagem direta com Selenium (sem JavaScript)
+            print("\n🔄 Tentativa 2: Usando Selenium diretamente...")
             
-            for tentativa in range(3):
-                script_retry = f"""
-                var fim = document.getElementById('dataFim');
-                fim.focus();
-                fim.select();
-                document.execCommand('selectAll');
-                document.execCommand('delete');
-                fim.value = '{data_fim_us}';
-                fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                return document.getElementById('dataFim').value;
-                """
-                
-                valor = navegador.execute_script(script_retry)
-                print(f"  Tentativa {tentativa+1}: '{valor}'")
+            try:
+                # Limpar campo
+                campo_fim = navegador.find_element(By.ID, "dataFim")
+                campo_fim.clear()
+                campo_fim.send_keys(Keys.CONTROL + "a")
+                campo_fim.send_keys(Keys.DELETE)
                 time.sleep(1)
                 
-                if valor == data_fim_us:
-                    print("✅ Sucesso na tentativa", tentativa+1)
-                    tirar_print(navegador, "02_datas_configuradas_final.png", "(após múltiplas tentativas)")
+                # Digitar no formato US
+                campo_fim.send_keys(data_fim_us)
+                time.sleep(1)
+                campo_fim.send_keys(Keys.TAB)
+                time.sleep(1)
+                
+                valor_fim = campo_fim.get_attribute("value")
+                print(f"📋 Data fim após digitação: '{valor_fim}'")
+                
+                if valor_fim == data_fim_us:
+                    print("✅ Sucesso com digitação direta!")
                     return True
+            except Exception as e:
+                print(f"❌ Erro na digitação direta: {e}")
             
             return False
             
     except Exception as e:
         print(f"❌ Erro no JavaScript agressivo: {e}")
+        import traceback
+        traceback.print_exc()
         tirar_print(navegador, "02_erro_datas.png", "(erro ao configurar datas)")
         return False
 
