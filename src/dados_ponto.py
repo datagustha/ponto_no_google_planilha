@@ -1,5 +1,5 @@
 # %%
-# dados_ponto.py - VERSÃO DEFINITIVA COM JAVASCRIPT E PRINTS
+# dados_ponto.py - VERSÃO DEFINITIVA - CORRIGIDA: AGORA CLICA NO BOTÃO!
 # %%
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -160,9 +160,10 @@ def periodo_pop_up(navegador):
         print(f"⚠️ Erro ao verificar popup: {e}")
         return False
 
-# 🔥 CORREÇÃO: ADICIONAR O DEF QUE ESTAVA FALTANDO
-def configurar_datas_com_javascript_agressivo(navegador):
-    """Configura datas e FORÇA o filtro a aplicar"""
+
+# 🔥 FUNÇÃO 1: Configurar datas (sem clicar no botão ainda)
+def configurar_datas_apenas(navegador):
+    """Apenas configura as datas, sem clicar no botão"""
     
     hoje = datetime.now()
     ontem = hoje - timedelta(days=1)
@@ -178,252 +179,215 @@ def configurar_datas_com_javascript_agressivo(navegador):
     print("=" * 50)
     
     try:
-        # 1. Primeiro setar as datas
         script_setar = f"""
         // Setar data início
         var inicio = document.getElementById('dataInicio');
-        inicio.value = '{data_inicio}';
-        inicio.dispatchEvent(new Event('input', {{ bubbles: true }}));
-        inicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
+        if(inicio) {{
+            inicio.value = '{data_inicio}';
+            inicio.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            inicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
+        }}
         
         // Setar data fim
         var fim = document.getElementById('dataFim');
-        fim.value = '{data_fim}';
-        fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
-        fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
+        if(fim) {{
+            fim.value = '{data_fim}';
+            fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
+        }}
         
-        return {{ inicio: inicio.value, fim: fim.value }};
+        return {{ 
+            inicio: inicio ? inicio.value : 'não encontrado', 
+            fim: fim ? fim.value : 'não encontrado' 
+        }};
         """
         
         resultado = navegador.execute_script(script_setar)
         print(f"📋 Datas setadas: {resultado}")
         
-        # 2. AGORA FORÇAR O FILTRO (clicar no botão atualizar)
-        print("🔄 Forçando atualização do filtro...")
-        
-        script_clique = """
-        var btn = document.getElementById('btnAtualizar');
-        if (btn) {
-            btn.click();
-            return true;
-        }
-        return false;
-        """
-        
-        navegador.execute_script(script_clique)
-        time.sleep(5)  # Esperar atualizar
-        
-        # 3. Print para ver o resultado
-        tirar_print(navegador, "02_apos_filtro.png", "(após aplicar filtro)")
-        
-        # 4. Verificar quantas linhas tem
-        qtd_linhas = navegador.execute_script("""
-            return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
+        # Verificar se as datas foram realmente setadas
+        verificacao = navegador.execute_script("""
+            return {
+                inicio: document.getElementById('dataInicio')?.value,
+                fim: document.getElementById('dataFim')?.value
+            };
         """)
+        print(f"✅ Verificação - Datas atuais: {verificacao}")
         
-        print(f"📊 Linhas após filtro: {qtd_linhas}")
-        
-        # Se tiver muitas linhas (>31), algo errado
-        if qtd_linhas > 31:
-            print("⚠️ Ainda parece ter muitos dias, tentando novamente...")
-            navegador.execute_script("document.getElementById('btnAtualizar').click();")
-            time.sleep(5)
-            
         return True
         
     except Exception as e:
-        print(f"❌ Erro: {e}")
+        print(f"❌ Erro ao configurar datas: {e}")
         return False
 
-# 🔥 FUNÇÃO NOVA: Forçar atualização com JavaScript
-def forcar_atualizacao_com_javascript(navegador):
-    """Força a atualização do relatório usando JavaScript direto no botão"""
+
+# 🔥 FUNÇÃO 2: Clicar no botão Atualizar (separadamente)
+def clicar_botao_atualizar(navegador):
+    """FUNÇÃO ESPECÍFICA PARA CLICAR NO BOTÃO ATUALIZAR"""
     
-    print("\n🔄 FORÇANDO ATUALIZAÇÃO COM JAVASCRIPT...")
+    print("\n" + "=" * 50)
+    print("🖱️ CLICANDO NO BOTÃO ATUALIZAR (id=btnAtualizar)")
+    print("=" * 50)
     
     try:
-        # Script para clicar no botão de múltiplas formas
-        script_clique_forcado = """
-        function forcarClique() {
-            // Tentar por ID
+        # VERIFICAR SE O BOTÃO EXISTE
+        botao_info = navegador.execute_script("""
             var btn = document.getElementById('btnAtualizar');
-            if (btn) {
-                console.log('Botão encontrado por ID');
-                
-                // Múltiplas formas de clicar
-                btn.click();  // Clique normal
-                btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-                btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-                btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-                
-                // Disparar eventos de formulário
-                var form = btn.closest('form');
-                if (form) {
-                    form.dispatchEvent(new Event('submit', { bubbles: true }));
-                }
-                
-                return 'Cliques executados no botão por ID';
+            if(btn) {
+                return {
+                    existe: true,
+                    texto: btn.textContent,
+                    visivel: window.getComputedStyle(btn).display !== 'none',
+                    habilitado: !btn.disabled,
+                    html: btn.outerHTML
+                };
             }
-            
-            // Tentar por outros seletores
-            var botoes = document.querySelectorAll('button');
-            for (var i = 0; i < botoes.length; i++) {
-                if (botoes[i].textContent.includes('Atualizar') || 
-                    botoes[i].innerHTML.includes('fa-refresh') ||
-                    botoes[i].className.includes('atualizar')) {
-                    
-                    console.log('Botão encontrado por texto:', botoes[i].textContent);
-                    botoes[i].click();
-                    botoes[i].dispatchEvent(new Event('click', { bubbles: true }));
-                    return 'Clique executado em botão: ' + botoes[i].textContent;
-                }
+            return { existe: false };
+        """)
+        
+        print(f"📋 Informações do botão: {botao_info}")
+        
+        if not botao_info.get('existe'):
+            print("❌ Botão 'btnAtualizar' NÃO ENCONTRADO!")
+            return False
+        
+        # MÉTODO 1: Clique direto com JavaScript
+        print("\n🔨 MÉTODO 1: Clique direto com JavaScript")
+        resultado1 = navegador.execute_script("""
+            var btn = document.getElementById('btnAtualizar');
+            if(btn) {
+                btn.click();
+                return 'Clique executado';
             }
+            return 'Falha';
+        """)
+        print(f"   ✅ {resultado1}")
+        time.sleep(3)
+        
+        # MÉTODO 2: Disparar evento de clique
+        print("\n🔨 MÉTODO 2: Disparar evento MouseEvent")
+        resultado2 = navegador.execute_script("""
+            var btn = document.getElementById('btnAtualizar');
+            if(btn) {
+                var evento = new MouseEvent('click', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                });
+                btn.dispatchEvent(evento);
+                return 'Evento disparado';
+            }
+            return 'Falha';
+        """)
+        print(f"   ✅ {resultado2}")
+        time.sleep(3)
+        
+        # MÉTODO 3: Clique com Selenium
+        print("\n🔨 MÉTODO 3: Clique com Selenium WebDriver")
+        try:
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.support.ui import WebDriverWait
+            from selenium.webdriver.support import expected_conditions as EC
             
-            return 'Nenhum botão de atualizar encontrado';
-        }
+            botao = WebDriverWait(navegador, 5).until(
+                EC.element_to_be_clickable((By.ID, "btnAtualizar"))
+            )
+            botao.click()
+            print("   ✅ Clique com Selenium executado")
+        except Exception as e:
+            print(f"   ⚠️ Clique com Selenium falhou: {e}")
         
-        return forcarClique();
-        """
-        
-        # Executar o script
-        resultado = navegador.execute_script(script_clique_forcado)
-        print(f"✅ JavaScript retornou: {resultado}")
-        
-        # Aguardar carregamento
         time.sleep(5)
         
-        # Verificar quantas linhas tem agora
+        # MÉTODO 4: Clique duplo para garantir
+        print("\n🔨 MÉTODO 4: Clique duplo com JavaScript")
+        resultado4 = navegador.execute_script("""
+            var btn = document.getElementById('btnAtualizar');
+            if(btn) {
+                btn.click();
+                btn.click();
+                return 'Clique duplo executado';
+            }
+            return 'Falha';
+        """)
+        print(f"   ✅ {resultado4}")
+        time.sleep(5)
+        
+        # VERIFICAR SE O FILTRO FUNCIONOU
         qtd_linhas = navegador.execute_script("""
             return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
         """)
         
-        print(f"📊 Linhas após atualização forçada: {qtd_linhas}")
+        print(f"\n📊 Linhas após todos os cliques: {qtd_linhas}")
         
-        # Se ainda tiver muitas linhas, tentar novamente
-        if qtd_linhas > 25:
-            print("⚠️ Ainda com muitas linhas, tentando segunda vez...")
-            time.sleep(2)
-            navegador.execute_script("document.getElementById('btnAtualizar')?.click();")
-            time.sleep(5)
+        # Mostrar as ÚLTIMAS 5 linhas para verificar o período
+        ultimas_linhas = navegador.execute_script("""
+            var linhas = document.querySelectorAll('.tabela-calculos-wrapper tbody tr');
+            var ultimasDatas = [];
+            var total = linhas.length;
             
-            # Verificar novamente
-            qtd_linhas_final = navegador.execute_script("""
-                return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
-            """)
-            print(f"📊 Linhas após segunda tentativa: {qtd_linhas_final}")
+            // Pegar as últimas 5 linhas (ou menos se tiver poucas)
+            for(var i = Math.max(0, total - 5); i < total; i++) {
+                var celulas = linhas[i].querySelectorAll('td');
+                if(celulas.length >= 3) {
+                    ultimasDatas.push({
+                        data: celulas[2]?.innerText || '',
+                        bSaldo: celulas[18]?.innerText || '',
+                        bTotal: celulas[19]?.innerText || ''
+                    });
+                }
+            }
+            return ultimasDatas;
+        """)
+        
+        print("\n📅 ÚLTIMAS 5 LINHS DO RELATÓRIO (para verificar período):")
+        for i, linha in enumerate(ultimas_linhas):
+            print(f"   {i+1}. Data: {linha.get('data', '')} | BSaldo: {linha.get('bSaldo', '')} | BTotal: {linha.get('bTotal', '')}")
         
         return True
         
     except Exception as e:
-        print(f"❌ Erro ao forçar atualização: {e}")
+        print(f"❌ Erro ao clicar no botão: {e}")
         return False
 
 
-# 📅 Modificar a função configurar_datas_relatorio para usar o novo método
+# 🔥 FUNÇÃO 3: Configurar datas E clicar no botão (função principal)
 def configurar_datas_relatorio(navegador):
-    """Configura as datas do relatório usando JavaScript"""
+    """Configura as datas E DEPOIS clica no botão atualizar"""
+    
+    print("\n" + "=" * 60)
+    print("📅 INICIANDO CONFIGURAÇÃO COMPLETA DO RELATÓRIO")
+    print("=" * 60)
+    
+    # Fechar popup se aparecer
     periodo_pop_up(navegador)
     
-    # Primeiro configurar as datas
-    if configurar_datas_com_javascript_agressivo(navegador):
-        print("✅ Datas configuradas, agora forcando atualização...")
-        
-        # AGORA sim, forçar a atualização com JavaScript
-        if forcar_atualizacao_com_javascript(navegador):
-            print("✅ Atualização forçada com sucesso!")
-            
-            # Verificação final
-            qtd_final = navegador.execute_script("""
-                return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
-            """)
-            
-            print(f"📊 VERIFICAÇÃO FINAL - Linhas no relatório: {qtd_final}")
-            
-            # Se ainda estiver errado, mostrar as primeiras datas para debug
-            if qtd_final > 25:
-                datas_debug = navegador.execute_script("""
-                    var linhas = document.querySelectorAll('.tabela-calculos-wrapper tbody tr');
-                    var primeirasDatas = [];
-                    for(var i=0; i<Math.min(5, linhas.length); i++) {
-                        var celulas = linhas[i].querySelectorAll('td');
-                        if(celulas.length >= 3) {
-                            primeirasDatas.push(celulas[2]?.innerText || '');
-                        }
-                    }
-                    return primeirasDatas;
-                """)
-                print(f"⚠️ DEBUG - Primeiras 5 datas mostradas: {datas_debug}")
-            
-            return True
-    
-    print("❌ Falha ao configurar datas")
-    return False
-
-
-# 🔥 Opcional: Função de emergência para recarregar tudo
-def resetar_e_aplicar_filtro(navegador):
-    """Função de emergência: recarrega a página e reaplica tudo"""
-    
-    print("\n🚨 MODO EMERGÊNCIA: Recarregando página...")
-    
-    try:
-        # Salvar URL atual
-        url_atual = navegador.current_url
-        
-        # Recarregar a página
-        navegador.get("https://pontoweb.secullum.com.br/#/calculos")
-        time.sleep(5)
-        
-        # Reconfigurar datas
-        hoje = datetime.now()
-        ontem = hoje - timedelta(days=1)
-        data_inicio = f"01/{hoje.month:02d}/{hoje.year}"
-        data_fim = f"{ontem.day:02d}/{ontem.month:02d}/{ontem.year}"
-        
-        # Script completo
-        script_completo = f"""
-        // Configurar datas
-        var inicio = document.getElementById('dataInicio');
-        var fim = document.getElementById('dataFim');
-        
-        if(inicio && fim) {{
-            inicio.value = '{data_inicio}';
-            fim.value = '{data_fim}';
-            
-            // Disparar eventos
-            inicio.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            inicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
-            fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
-            
-            // Clicar no botão MÚLTIPLAS VEZES
-            var btn = document.getElementById('btnAtualizar');
-            if(btn) {{
-                for(var i=0; i<3; i++) {{
-                    btn.click();
-                    btn.dispatchEvent(new MouseEvent('click', {{ bubbles: true }}));
-                }}
-            }}
-            
-            return true;
-        }}
-        return false;
-        """
-        
-        navegador.execute_script(script_completo)
-        time.sleep(7)
-        
-        # Verificar resultado
-        qtd = navegador.execute_script("""
-            return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
-        """)
-        
-        print(f"📊 Linhas após emergência: {qtd}")
-        return qtd <= 25
-        
-    except Exception as e:
-        print(f"❌ Erro na emergência: {e}")
+    # PASSO 1: Configurar as datas
+    print("\n📌 PASSO 1: Configurando datas...")
+    if not configurar_datas_apenas(navegador):
+        print("❌ Falha ao configurar datas")
         return False
+    
+    time.sleep(2)
+    
+    # PASSO 2: Clicar no botão atualizar
+    print("\n📌 PASSO 2: Clicando no botão Atualizar...")
+    if not clicar_botao_atualizar(navegador):
+        print("❌ Falha ao clicar no botão")
+        return False
+    
+    print("\n" + "=" * 60)
+    print("✅✅✅ RELATÓRIO CONFIGURADO COM SUCESSO!")
+    print("=" * 60)
+    
+    # VERIFICAÇÃO FINAL
+    qtd_final = navegador.execute_script("""
+        return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
+    """)
+    
+    print(f"\n📊 TOTAL DE LINHAS NO RELATÓRIO: {qtd_final}")
+    
+    return True
 
 
 def obter_funcionario_atual(navegador):
