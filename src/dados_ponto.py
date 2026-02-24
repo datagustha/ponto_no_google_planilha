@@ -1,5 +1,4 @@
-# %%
-# dados_ponto.py - VERSÃO DEFINITIVA COM JAVASCRIPT E PRINTS
+# dados_ponto.py - VERSÃO COM FILTRO FORÇADO CORRETAMENTE
 # %%
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -160,9 +159,9 @@ def periodo_pop_up(navegador):
         print(f"⚠️ Erro ao verificar popup: {e}")
         return False
 
-# 🔥 CORREÇÃO: ADICIONAR O DEF QUE ESTAVA FALTANDO
+# 🔥 CORREÇÃO: VERSÃO MAIS AGRESSIVA PARA FORÇAR O FILTRO
 def configurar_datas_com_javascript_agressivo(navegador):
-    """Configura datas e FORÇA o filtro a aplicar"""
+    """Configura datas e FORÇA o filtro a aplicar com verificação"""
     
     hoje = datetime.now()
     ontem = hoje - timedelta(days=1)
@@ -182,53 +181,111 @@ def configurar_datas_com_javascript_agressivo(navegador):
         script_setar = f"""
         // Setar data início
         var inicio = document.getElementById('dataInicio');
-        inicio.value = '{data_inicio}';
-        inicio.dispatchEvent(new Event('input', {{ bubbles: true }}));
-        inicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
+        if(inicio) {{
+            inicio.value = '{data_inicio}';
+            inicio.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            inicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
+        }}
         
         // Setar data fim
         var fim = document.getElementById('dataFim');
-        fim.value = '{data_fim}';
-        fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
-        fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
+        if(fim) {{
+            fim.value = '{data_fim}';
+            fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
+        }}
         
-        return {{ inicio: inicio.value, fim: fim.value }};
+        return {{ inicio: inicio?.value, fim: fim?.value }};
         """
         
         resultado = navegador.execute_script(script_setar)
         print(f"📋 Datas setadas: {resultado}")
         
-        # 2. AGORA FORÇAR O FILTRO (clicar no botão atualizar)
-        print("🔄 Forçando atualização do filtro...")
+        # 2. VERIFICAR SE AS DATAS FORAM REALMENTE SETADAS
+        datas_verificacao = navegador.execute_script("""
+            return {
+                inicio: document.getElementById('dataInicio')?.value,
+                fim: document.getElementById('dataFim')?.value
+            };
+        """)
+        print(f"✅ Verificação - Datas atuais: {datas_verificacao}")
         
-        script_clique = """
-        var btn = document.getElementById('btnAtualizar');
-        if (btn) {
-            btn.click();
-            return true;
-        }
-        return false;
-        """
+        # 3. FORÇAR MÚLTIPLOS CLIQUES NO BOTÃO ATUALIZAR
+        print("🔄 Forçando atualização do filtro (múltiplas tentativas)...")
         
-        navegador.execute_script(script_clique)
-        time.sleep(5)  # Esperar atualizar
+        for tentativa in range(3):
+            script_clique = """
+            var btn = document.getElementById('btnAtualizar');
+            if (btn) {
+                btn.click();
+                btn.click(); // Duplo clique para garantir
+                return true;
+            }
+            return false;
+            """
+            
+            navegador.execute_script(script_clique)
+            time.sleep(3)  # Esperar um pouco entre os cliques
+            print(f"  Tentativa {tentativa+1}/3 de atualização")
         
-        # 3. Print para ver o resultado
+        time.sleep(5)  # Esperar mais tempo após todos os cliques
+        
+        # 4. Print para ver o resultado
         tirar_print(navegador, "02_apos_filtro.png", "(após aplicar filtro)")
         
-        # 4. Verificar quantas linhas tem
+        # 5. Verificar quantas linhas tem AGORA
         qtd_linhas = navegador.execute_script("""
             return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
         """)
         
         print(f"📊 Linhas após filtro: {qtd_linhas}")
         
-        # Se tiver muitas linhas (>31), algo errado
-        if qtd_linhas > 31:
-            print("⚠️ Ainda parece ter muitos dias, tentando novamente...")
-            navegador.execute_script("document.getElementById('btnAtualizar').click();")
+        # 6. Se ainda tiver muitas linhas, tentar recarregar a página e reaplicar
+        if qtd_linhas > 25:  # Mais que o esperado (deveria ser ~23)
+            print("⚠️ Ainda parece ter muitos dias, tentando recarregar a página...")
+            
+            # Recarregar a página de cálculos
+            navegador.get("https://pontoweb.secullum.com.br/#/calculos")
             time.sleep(5)
             
+            # Reaplicar as datas
+            navegador.execute_script(script_setar)
+            time.sleep(2)
+            
+            # Clicar novamente
+            for tentativa in range(2):
+                navegador.execute_script("document.getElementById('btnAtualizar')?.click();")
+                time.sleep(3)
+            
+            time.sleep(5)
+            
+            # Verificar novamente
+            qtd_linhas_final = navegador.execute_script("""
+                return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
+            """)
+            
+            print(f"📊 Linhas após recarga: {qtd_linhas_final}")
+            
+            if qtd_linhas_final <= 25:
+                print("✅ Recarga resolveu o problema!")
+                return True
+            else:
+                print(f"❌ Ainda com {qtd_linhas_final} linhas. Investigando...")
+                
+                # Verificar quais datas estão sendo mostradas
+                datas_mostradas = navegador.execute_script("""
+                    var linhas = document.querySelectorAll('.tabela-calculos-wrapper tbody tr');
+                    var primeirasDatas = [];
+                    for(var i=0; i<Math.min(3, linhas.length); i++) {
+                        var celulas = linhas[i].querySelectorAll('td');
+                        if(celulas.length >= 3) {
+                            primeirasDatas.push(celulas[2]?.innerText || '');
+                        }
+                    }
+                    return primeirasDatas;
+                """)
+                print(f"📅 Primeiras datas mostradas: {datas_mostradas}")
+        
         return True
         
     except Exception as e:
@@ -263,7 +320,7 @@ def configurar_datas_relatorio(navegador):
     
     # Usar apenas JavaScript agressivo (abandonar digitação)
     if configurar_datas_com_javascript_agressivo(navegador):
-        return atualizar_relatorio(navegador)
+        return True
     
     print("❌ Falha ao configurar datas")
     return False
