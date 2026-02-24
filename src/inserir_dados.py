@@ -11,11 +11,16 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+import pandas as pd
+
+import time
+
+
 # inserir_dados.py
 import pandas as pd
 
 def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_linha=38):
-    """Versão final - Remove apenas o dia da semana, mantém a data original"""
+    """Versão corrigida - limpa até linha 38 para evitar dados antigos"""
     
     print(f"\n📤 Salvando dados na aba: '{nome_aba}'")
     print(f"📊 DataFrame com {len(df_ponto)} linhas")
@@ -29,38 +34,9 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
     colunas_disponiveis = list(df_ponto.columns)
     print(f"📋 Colunas no DataFrame: {colunas_disponiveis}")
     
-    # 👉 VER DADOS ORIGINAIS ANTES DA FORMATAÇÃO
+    # 👉 ADICIONE ESTA LINHA PARA VER OS DADOS ORIGINAIS
     print(f"\n🔍 DADOS ORIGINAIS DO DATAFRAME (primeiras 5 linhas):")
     print(df_ponto.head().to_string(index=False))
-    
-    # ====================================================
-    # 🔥 REMOVER APENAS O DIA DA SEMANA - MANTER DATA ORIGINAL
-    # ====================================================
-    if 'Data' in df_ponto.columns:
-        # Criar uma cópia para não modificar o original
-        df_ponto = df_ponto.copy()
-        
-        # Função para remover apenas o dia da semana
-        def remover_dia_semana(data):
-            if pd.isna(data) or data == '':
-                return ''
-            
-            data_str = str(data).strip()
-            
-            # Se tiver formato "02/01/2026 - Sun", remove o " - Sun"
-            if ' - ' in data_str:
-                partes = data_str.split(' - ')
-                if len(partes) > 1 and partes[1] in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']:
-                    return partes[0]  # Retorna só a data
-            
-            return data_str  # Se não tiver dia da semana, mantém original
-        
-        # Aplicar a remoção
-        df_ponto['Data'] = df_ponto['Data'].apply(remover_dia_semana)
-        
-        print(f"\n✅ DIAS DA SEMANA REMOVIDOS (data original mantida):")
-        print(df_ponto['Data'].head().to_string(index=False))
-    # ====================================================
     
     # Preparar dados
     dados_preparados = []
@@ -109,9 +85,6 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
         dados_preparados.append([data, BSaldo, BTotal])
     
     print(f"\n📝 Dados preparados: {len(dados_preparados)} linhas")
-    print(f"\n🔍 PRIMEIRAS 5 LINHAS PREPARADAS (para conferir):")
-    for i in range(min(5, len(dados_preparados))):
-        print(f"   {dados_preparados[i]}")
     
     # 🔥 ALTERAÇÃO PRINCIPAL: Limpar até linha fixa
     linha_inicio = 6
@@ -156,7 +129,7 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
         print(f"✅ {nome_aba}: {updated_cells} células atualizadas")
         print(f"   Dados inseridos nas linhas {linha_inicio} a {linha_fim_dados}")
         
-        # 🔥 OPCIONAL: Limpar o que sobrar entre os dados e linha 38
+        # 🔥 OPCIONAL: Se quiser também limpar o que sobrar entre os dados e linha 38
         if linha_fim_dados < limpar_ate_linha:
             range_sobra = f"{nome_aba}!A{linha_fim_dados + 1}:C{limpar_ate_linha}"
             try:
