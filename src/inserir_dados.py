@@ -11,16 +11,11 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-import pandas as pd
-
-import time
-
-
 # inserir_dados.py
 import pandas as pd
 
 def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_linha=38):
-    """Versão corrigida - limpa até linha 38 para evitar dados antigos"""
+    """Versão final - Formata datas e salva no Google Sheets"""
     
     print(f"\n📤 Salvando dados na aba: '{nome_aba}'")
     print(f"📊 DataFrame com {len(df_ponto)} linhas")
@@ -34,9 +29,46 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
     colunas_disponiveis = list(df_ponto.columns)
     print(f"📋 Colunas no DataFrame: {colunas_disponiveis}")
     
-    # 👉 ADICIONE ESTA LINHA PARA VER OS DADOS ORIGINAIS
+    # 👉 VER DADOS ORIGINAIS ANTES DA FORMATAÇÃO
     print(f"\n🔍 DADOS ORIGINAIS DO DATAFRAME (primeiras 5 linhas):")
     print(df_ponto.head().to_string(index=False))
+    
+    # ====================================================
+    # 🔥 FORMATAÇÃO DAS DATAS - CORAÇÃO DA SOLUÇÃO
+    # ====================================================
+    if 'Data' in df_ponto.columns:
+        # Criar uma cópia para não modificar o original
+        df_ponto = df_ponto.copy()
+        
+        # Função para limpar a data
+        def formatar_data_br(data):
+            if pd.isna(data) or data == '':
+                return ''
+            
+            data_str = str(data).strip()
+            
+            # Se tiver formato "02/01/2026 - Sun", pega só a data
+            if ' - ' in data_str:
+                data_str = data_str.split(' - ')[0]
+            
+            # Remover qualquer dia da semana em inglês
+            dias_semana = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun',
+                          'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+            
+            for dia in dias_semana:
+                if data_str.endswith(f' {dia}'):
+                    data_str = data_str.replace(f' {dia}', '')
+                if f' {dia}' in data_str:
+                    data_str = data_str.replace(f' {dia}', '')
+            
+            return data_str
+        
+        # Aplicar a formatação
+        df_ponto['Data'] = df_ponto['Data'].apply(formatar_data_br)
+        
+        print(f"\n✅ DATAS FORMATADAS PARA PADRÃO BR:")
+        print(df_ponto['Data'].head().to_string(index=False))
+    # ====================================================
     
     # Preparar dados
     dados_preparados = []
@@ -129,7 +161,7 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
         print(f"✅ {nome_aba}: {updated_cells} células atualizadas")
         print(f"   Dados inseridos nas linhas {linha_inicio} a {linha_fim_dados}")
         
-        # 🔥 OPCIONAL: Se quiser também limpar o que sobrar entre os dados e linha 38
+        # 🔥 OPCIONAL: Limpar o que sobrar entre os dados e linha 38
         if linha_fim_dados < limpar_ate_linha:
             range_sobra = f"{nome_aba}!A{linha_fim_dados + 1}:C{limpar_ate_linha}"
             try:
