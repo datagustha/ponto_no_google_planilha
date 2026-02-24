@@ -24,6 +24,26 @@ import time
 # inserir_dados.py
 import pandas as pd
 
+#%%
+
+# 📚 bibliotecas
+#------------------------------------------------
+
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+import pandas as pd
+
+import time
+
+
+# inserir_dados.py
+import pandas as pd
+
 def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_linha=38):
     """Versão corrigida - limpa até linha 38 para evitar dados antigos"""
     
@@ -63,19 +83,32 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
         BSaldo = row.get('BSaldo', '')
         BTotal = row.get('BTotal', '')
         
-        # 🔥 TRADUZIR O DIA DA SEMANA NA DATA
+        # 🔥 CONVERTER DATA DO FORMATO US PARA BR E TRADUZIR DIA DA SEMANA
         if data and ' - ' in data:
             partes_data = data.split(' - ')
             if len(partes_data) == 2:
-                data_numero = partes_data[0]
-                dia_ingles = partes_data[1]
+                data_numero = partes_data[0]  # Ex: "02/01/2026"
+                dia_ingles = partes_data[1]    # Ex: "Sun"
                 
-                # Traduzir o dia da semana
+                # TRADUZIR O DIA DA SEMANA
                 dia_portugues = dias_traducao.get(dia_ingles, dia_ingles)
                 
-                # Remontar a data com o dia em português
-                data = f"{data_numero} - {dia_portugues}"
-                print(f"   🔄 Traduzindo: {data_numero} - {dia_ingles} → {data_numero} - {dia_portugues}")
+                # CONVERTER DATA DE US PARA BR (se estiver no formato MM/DD/YYYY)
+                if '/' in data_numero:
+                    partes_data_num = data_numero.split('/')
+                    if len(partes_data_num) == 3:
+                        # Formato US: MM/DD/YYYY → BR: DD/MM/YYYY
+                        mes_us = partes_data_num[0]
+                        dia_us = partes_data_num[1]
+                        ano = partes_data_num[2]
+                        
+                        # Reorganizar para formato BR
+                        data_br = f"{dia_us}/{mes_us}/{ano}"
+                        print(f"   🔄 Convertendo data: {data_numero} (US) → {data_br} (BR)")
+                        
+                        # Remontar a data completa com dia em português
+                        data = f"{data_br} - {dia_portugues}"
+                        print(f"   🔄 Data final: {data}")
         
         # Converter para string
         if isinstance(BSaldo, (list, tuple)):
@@ -114,10 +147,10 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
         
         dados_preparados.append([data, BSaldo, BTotal])
     
-    print(f"\n📝 Dados preparados com dias em português: {len(dados_preparados)} linhas")
+    print(f"\n📝 Dados preparados com formato BR e dias em português: {len(dados_preparados)} linhas")
     
     # Mostrar exemplo dos dados traduzidos
-    print(f"\n🔍 EXEMPLO DOS DADOS TRADUZIDOS (primeiras 5 linhas):")
+    print(f"\n🔍 EXEMPLO DOS DADOS CONVERTIDOS (primeiras 5 linhas):")
     for i, linha in enumerate(dados_preparados[:5]):
         print(f"   Linha {i+1}: {linha}")
     
