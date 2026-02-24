@@ -161,97 +161,107 @@ def periodo_pop_up(navegador):
 
 # 📅 CONFIGURAR DATAS DIGITANDO DIRETAMENTE (igual ao seu original)
 def configurar_datas_digitando(navegador):
-    """Configura as datas DIGITANDO diretamente nos campos"""
+    """Configura as datas usando JavaScript direto (mais confiável)"""
     
     hoje = datetime.now()
     ontem = hoje - timedelta(days=1)
     
     print("=" * 50)
-    print("📅 CONFIGURANDO DATAS (DIGITANDO DIRETO)")
+    print("📅 CONFIGURANDO DATAS")
     print(f"Data início: 01/{hoje.month:02d}/{hoje.year}")
     print(f"Data fim: {ontem.day:02d}/{ontem.month:02d}/{ontem.year}")
     print("=" * 50)
     
     try:
-        print("\n1️⃣ Configurando DATA INÍCIO (digitando)...")
-        campo_inicio = WebDriverWait(navegador, 10).until(
-            EC.presence_of_element_located((By.ID, "dataInicio"))
-        )
-        
-        # 🔥 LIMPAR CAMPO DE FORMA MAIS ROBUSTA
-        campo_inicio.click()
-        campo_inicio.clear()  # Tenta limpar primeiro
-        campo_inicio.send_keys(Keys.CONTROL + "a")
-        campo_inicio.send_keys(Keys.DELETE)
-        time.sleep(0.5)
-        
-        # Garantir formato DD/MM/YYYY
+        # 🔥 SOLUÇÃO: USAR JAVASCRIPT PARA SETAR O VALOR DIRETO
         data_inicio = f"01/{hoje.month:02d}/{hoje.year}"
-        campo_inicio.send_keys(data_inicio)
-        print(f"✅ Data início digitada: {data_inicio}")
-        campo_inicio.send_keys(Keys.TAB)
-        time.sleep(1)
-        
-        print("\n2️⃣ Configurando DATA FIM (digitando)...")
-        campo_fim = WebDriverWait(navegador, 10).until(
-            EC.presence_of_element_located((By.ID, "dataFim"))
-        )
-        
-        # 🔥 LIMPAR CAMPO DE FORMA MAIS ROBUSTA
-        campo_fim.click()
-        campo_fim.clear()
-        campo_fim.send_keys(Keys.CONTROL + "a")
-        campo_fim.send_keys(Keys.DELETE)
-        time.sleep(0.5)
-        
-        # 🔥 FORÇAR FORMATO BRASILEIRO
         data_fim = f"{ontem.day:02d}/{ontem.month:02d}/{ontem.year}"
         
-        # Digitar caractere por caractere para garantir
-        for char in data_fim:
-            campo_fim.send_keys(char)
-            time.sleep(0.05)  # Pequena pausa entre caracteres
+        # Script JavaScript para setar valores e forçar atualização
+        script = f"""
+        // Setar data início
+        var campoInicio = document.getElementById('dataInicio');
+        campoInicio.value = '{data_inicio}';
+        campoInicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
+        campoInicio.dispatchEvent(new Event('blur', {{ bubbles: true }}));
         
-        print(f"✅ Data fim digitada: {data_fim}")
-        campo_fim.send_keys(Keys.TAB)
+        // Setar data fim
+        var campoFim = document.getElementById('dataFim');
+        campoFim.value = '{data_fim}';
+        campoFim.dispatchEvent(new Event('change', {{ bubbles: true }}));
+        campoFim.dispatchEvent(new Event('blur', {{ bubbles: true }}));
+        
+        // Forçar atualização do componente (se for React/Angular)
+        var event = new Event('input', {{ bubbles: true }});
+        campoInicio.dispatchEvent(event);
+        campoFim.dispatchEvent(event);
+        
+        return true;
+        """
+        
+        navegador.execute_script(script)
+        print(f"✅ Datas configuradas via JavaScript")
         time.sleep(2)
         
-        print("\n🔍 Verificando se as datas foram aplicadas...")
-        valor_inicio = campo_inicio.get_attribute("value")
-        valor_fim = campo_fim.get_attribute("value")
+        # Verificar se funcionou
+        valor_inicio = navegador.execute_script("return document.getElementById('dataInicio').value;")
+        valor_fim = navegador.execute_script("return document.getElementById('dataFim').value;")
         
         print(f"📋 Data início atual: '{valor_inicio}'")
         print(f"📋 Data fim atual: '{valor_fim}'")
         
-        # 🔥 VERIFICAÇÃO MAIS FLEXÍVEL
-        # Extrair partes da data para comparar
-        def extrair_partes_data(data_str):
-            # Tenta diferentes formatos
-            if '/' in data_str:
-                partes = data_str.split('/')
-                if len(partes) == 3:
-                    return partes
-            return None
+        # Se ainda estiver errado, tenta uma abordagem mais agressiva
+        if valor_fim != data_fim:
+            print("⚠️ JavaScript simples falhou, tentando abordagem mais agressiva...")
+            
+            # Abordagem mais agressiva: limpar e setar com foco
+            script_agressivo = f"""
+            var campoFim = document.getElementById('dataFim');
+            
+            // Focar no campo
+            campoFim.focus();
+            
+            // Limpar de todas as formas
+            campoFim.value = '';
+            campoFim.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            
+            // Setar o valor
+            campoFim.value = '{data_fim}';
+            
+            // Disparar todos os eventos possíveis
+            campoFim.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            campoFim.dispatchEvent(new Event('change', {{ bubbles: true }}));
+            campoFim.dispatchEvent(new Event('blur', {{ bubbles: true }}));
+            campoFim.dispatchEvent(new Event('keyup', {{ bubbles: true }}));
+            
+            // Se for um componente React, isso ajuda
+            if (campoFim._valueTracker) {{
+                campoFim._valueTracker.setValue('{data_fim}');
+            }}
+            
+            return document.getElementById('dataFim').value;
+            """
+            
+            valor_agressivo = navegador.execute_script(script_agressivo)
+            print(f"📋 Após abordagem agressiva: '{valor_agressivo}'")
+            
+            if valor_agressivo == data_fim:
+                print("✅ Abordagem agressiva funcionou!")
+                valor_fim = valor_agressivo
         
-        partes_esperada = data_fim.split('/')
-        partes_atual = extrair_partes_data(valor_fim) if valor_fim else None
-        
-        if partes_atual and partes_esperada:
-            # Comparar dia, mês e ano (ignorando formato)
-            if (partes_atual[0] == partes_esperada[0] and 
-                partes_atual[1] == partes_esperada[1] and 
-                partes_atual[2] == partes_esperada[2]):
-                print("✅✅✅ DATAS CONFIGURADAS COM SUCESSO!")
-                return True
-        
-        # Se a verificação falhar, tenta JavaScript como fallback
-        print("⚠️ Verificação falhou, tentando JavaScript...")
-        return configurar_datas_javascript(navegador)
+        # Verificação final
+        if valor_fim == data_fim or valor_fim == data_fim.replace('/', '-'):
+            print("✅✅✅ DATAS CONFIGURADAS COM SUCESSO!")
+            return True
+        else:
+            print(f"❌ Ainda errado: esperado '{data_fim}', obtido '{valor_fim}'")
+            
+            # Última tentativa: usar o método antigo mas com JavaScript puro
+            return configurar_datas_javascript(navegador)
             
     except Exception as e:
-        print(f"❌ Erro ao configurar datas digitando: {e}")
-        return False
-
+        print(f"❌ Erro: {e}")
+        return configurar_datas_javascript(navegador)
 
 def atualizar_relatorio(navegador):
     """Clica no botão Atualizar para aplicar as datas"""
