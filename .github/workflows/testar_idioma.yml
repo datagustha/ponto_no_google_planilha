@@ -1,5 +1,5 @@
-# .github/workflows/testar_com_login.yml
-name: Testar com Login
+# .github/workflows/testar_idioma.yml
+name: Testar Idioma
 
 on:
   push:
@@ -7,14 +7,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-login:
+  test-idioma:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
     
@@ -32,13 +32,13 @@ jobs:
         echo "PONTOMAIS_USER=${{ secrets.PONTOMAIS_USER }}" >> .env
         echo "PONTOMAIS_PASS=${{ secrets.PONTOMAIS_PASS }}" >> .env
     
-    - name: Executar diagnóstico com login
-      run: python diagnosticar_com_login.py
+    - name: Executar diagnóstico
+      run: python diagnosticar_idioma.py
     
     - name: Upload screenshots
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4  # Mudado para v4
       if: always()
       with:
-        name: screenshots-login
+        name: screenshots
         path: screenshots/
         retention-days: 7
