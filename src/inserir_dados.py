@@ -4,6 +4,11 @@
 # 📚 bibliotecas
 #------------------------------------------------
 
+#%%
+
+# 📚 bibliotecas
+#------------------------------------------------
+
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -38,6 +43,17 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
     print(f"\n🔍 DADOS ORIGINAIS DO DATAFRAME (primeiras 5 linhas):")
     print(df_ponto.head().to_string(index=False))
     
+    # 📅 DICIONÁRIO PARA TRADUZIR DIAS DA SEMANA
+    dias_traducao = {
+        'Mon': 'Seg',
+        'Tue': 'Ter',
+        'Wed': 'Qua',
+        'Thu': 'Qui',
+        'Fri': 'Sex',
+        'Sat': 'Sáb',
+        'Sun': 'Dom'
+    }
+    
     # Preparar dados
     dados_preparados = []
     
@@ -46,6 +62,20 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
         data = str(row.get('Data', '')).strip()
         BSaldo = row.get('BSaldo', '')
         BTotal = row.get('BTotal', '')
+        
+        # 🔥 TRADUZIR O DIA DA SEMANA NA DATA
+        if data and ' - ' in data:
+            partes_data = data.split(' - ')
+            if len(partes_data) == 2:
+                data_numero = partes_data[0]
+                dia_ingles = partes_data[1]
+                
+                # Traduzir o dia da semana
+                dia_portugues = dias_traducao.get(dia_ingles, dia_ingles)
+                
+                # Remontar a data com o dia em português
+                data = f"{data_numero} - {dia_portugues}"
+                print(f"   🔄 Traduzindo: {data_numero} - {dia_ingles} → {data_numero} - {dia_portugues}")
         
         # Converter para string
         if isinstance(BSaldo, (list, tuple)):
@@ -84,7 +114,12 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
         
         dados_preparados.append([data, BSaldo, BTotal])
     
-    print(f"\n📝 Dados preparados: {len(dados_preparados)} linhas")
+    print(f"\n📝 Dados preparados com dias em português: {len(dados_preparados)} linhas")
+    
+    # Mostrar exemplo dos dados traduzidos
+    print(f"\n🔍 EXEMPLO DOS DADOS TRADUZIDOS (primeiras 5 linhas):")
+    for i, linha in enumerate(dados_preparados[:5]):
+        print(f"   Linha {i+1}: {linha}")
     
     # 🔥 ALTERAÇÃO PRINCIPAL: Limpar até linha fixa
     linha_inicio = 6
