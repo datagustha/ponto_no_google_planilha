@@ -1,4 +1,5 @@
-# dados_ponto.py - VERSÃO COM FILTRO FORÇADO CORRETAMENTE
+# %%
+# dados_ponto.py - VERSÃO DEFINITIVA COM JAVASCRIPT E PRINTS
 # %%
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -159,9 +160,9 @@ def periodo_pop_up(navegador):
         print(f"⚠️ Erro ao verificar popup: {e}")
         return False
 
-# 🔥 CORREÇÃO: VERSÃO MAIS AGRESSIVA PARA FORÇAR O FILTRO
+# 🔥 CORREÇÃO: ADICIONAR O DEF QUE ESTAVA FALTANDO
 def configurar_datas_com_javascript_agressivo(navegador):
-    """Configura datas e FORÇA o filtro a aplicar com verificação"""
+    """Configura datas e FORÇA o filtro a aplicar"""
     
     hoje = datetime.now()
     ontem = hoje - timedelta(days=1)
@@ -181,102 +182,169 @@ def configurar_datas_com_javascript_agressivo(navegador):
         script_setar = f"""
         // Setar data início
         var inicio = document.getElementById('dataInicio');
-        if(inicio) {{
-            inicio.value = '{data_inicio}';
-            inicio.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            inicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
-        }}
+        inicio.value = '{data_inicio}';
+        inicio.dispatchEvent(new Event('input', {{ bubbles: true }}));
+        inicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
         
         // Setar data fim
         var fim = document.getElementById('dataFim');
-        if(fim) {{
-            fim.value = '{data_fim}';
-            fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
-        }}
+        fim.value = '{data_fim}';
+        fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
+        fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
         
-        return {{ inicio: inicio?.value, fim: fim?.value }};
+        return {{ inicio: inicio.value, fim: fim.value }};
         """
         
         resultado = navegador.execute_script(script_setar)
         print(f"📋 Datas setadas: {resultado}")
         
-        # 2. VERIFICAR SE AS DATAS FORAM REALMENTE SETADAS
-        datas_verificacao = navegador.execute_script("""
-            return {
-                inicio: document.getElementById('dataInicio')?.value,
-                fim: document.getElementById('dataFim')?.value
-            };
-        """)
-        print(f"✅ Verificação - Datas atuais: {datas_verificacao}")
+        # 2. AGORA FORÇAR O FILTRO (clicar no botão atualizar)
+        print("🔄 Forçando atualização do filtro...")
         
-        # 3. FORÇAR MÚLTIPLOS CLIQUES NO BOTÃO ATUALIZAR
-        print("🔄 Forçando atualização do filtro (múltiplas tentativas)...")
+        script_clique = """
+        var btn = document.getElementById('btnAtualizar');
+        if (btn) {
+            btn.click();
+            return true;
+        }
+        return false;
+        """
         
-        for tentativa in range(3):
-            script_clique = """
-            var btn = document.getElementById('btnAtualizar');
-            if (btn) {
-                btn.click();
-                btn.click(); // Duplo clique para garantir
-                return true;
-            }
-            return false;
-            """
-            
-            navegador.execute_script(script_clique)
-            time.sleep(3)  # Esperar um pouco entre os cliques
-            print(f"  Tentativa {tentativa+1}/3 de atualização")
+        navegador.execute_script(script_clique)
+        time.sleep(5)  # Esperar atualizar
         
-        time.sleep(5)  # Esperar mais tempo após todos os cliques
-        
-        # 4. Print para ver o resultado
+        # 3. Print para ver o resultado
         tirar_print(navegador, "02_apos_filtro.png", "(após aplicar filtro)")
         
-        # 5. Verificar quantas linhas tem AGORA
+        # 4. Verificar quantas linhas tem
         qtd_linhas = navegador.execute_script("""
             return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
         """)
         
         print(f"📊 Linhas após filtro: {qtd_linhas}")
         
-        # 6. Se ainda tiver muitas linhas, tentar recarregar a página e reaplicar
-        if qtd_linhas > 25:  # Mais que o esperado (deveria ser ~23)
-            print("⚠️ Ainda parece ter muitos dias, tentando recarregar a página...")
-            
-            # Recarregar a página de cálculos
-            navegador.get("https://pontoweb.secullum.com.br/#/calculos")
+        # Se tiver muitas linhas (>31), algo errado
+        if qtd_linhas > 31:
+            print("⚠️ Ainda parece ter muitos dias, tentando novamente...")
+            navegador.execute_script("document.getElementById('btnAtualizar').click();")
             time.sleep(5)
             
-            # Reaplicar as datas
-            navegador.execute_script(script_setar)
+        return True
+        
+    except Exception as e:
+        print(f"❌ Erro: {e}")
+        return False
+
+# 🔥 FUNÇÃO NOVA: Forçar atualização com JavaScript
+def forcar_atualizacao_com_javascript(navegador):
+    """Força a atualização do relatório usando JavaScript direto no botão"""
+    
+    print("\n🔄 FORÇANDO ATUALIZAÇÃO COM JAVASCRIPT...")
+    
+    try:
+        # Script para clicar no botão de múltiplas formas
+        script_clique_forcado = """
+        function forcarClique() {
+            // Tentar por ID
+            var btn = document.getElementById('btnAtualizar');
+            if (btn) {
+                console.log('Botão encontrado por ID');
+                
+                // Múltiplas formas de clicar
+                btn.click();  // Clique normal
+                btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+                btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                
+                // Disparar eventos de formulário
+                var form = btn.closest('form');
+                if (form) {
+                    form.dispatchEvent(new Event('submit', { bubbles: true }));
+                }
+                
+                return 'Cliques executados no botão por ID';
+            }
+            
+            // Tentar por outros seletores
+            var botoes = document.querySelectorAll('button');
+            for (var i = 0; i < botoes.length; i++) {
+                if (botoes[i].textContent.includes('Atualizar') || 
+                    botoes[i].innerHTML.includes('fa-refresh') ||
+                    botoes[i].className.includes('atualizar')) {
+                    
+                    console.log('Botão encontrado por texto:', botoes[i].textContent);
+                    botoes[i].click();
+                    botoes[i].dispatchEvent(new Event('click', { bubbles: true }));
+                    return 'Clique executado em botão: ' + botoes[i].textContent;
+                }
+            }
+            
+            return 'Nenhum botão de atualizar encontrado';
+        }
+        
+        return forcarClique();
+        """
+        
+        # Executar o script
+        resultado = navegador.execute_script(script_clique_forcado)
+        print(f"✅ JavaScript retornou: {resultado}")
+        
+        # Aguardar carregamento
+        time.sleep(5)
+        
+        # Verificar quantas linhas tem agora
+        qtd_linhas = navegador.execute_script("""
+            return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
+        """)
+        
+        print(f"📊 Linhas após atualização forçada: {qtd_linhas}")
+        
+        # Se ainda tiver muitas linhas, tentar novamente
+        if qtd_linhas > 25:
+            print("⚠️ Ainda com muitas linhas, tentando segunda vez...")
             time.sleep(2)
-            
-            # Clicar novamente
-            for tentativa in range(2):
-                navegador.execute_script("document.getElementById('btnAtualizar')?.click();")
-                time.sleep(3)
-            
+            navegador.execute_script("document.getElementById('btnAtualizar')?.click();")
             time.sleep(5)
             
             # Verificar novamente
             qtd_linhas_final = navegador.execute_script("""
                 return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
             """)
+            print(f"📊 Linhas após segunda tentativa: {qtd_linhas_final}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Erro ao forçar atualização: {e}")
+        return False
+
+
+# 📅 Modificar a função configurar_datas_relatorio para usar o novo método
+def configurar_datas_relatorio(navegador):
+    """Configura as datas do relatório usando JavaScript"""
+    periodo_pop_up(navegador)
+    
+    # Primeiro configurar as datas
+    if configurar_datas_com_javascript_agressivo(navegador):
+        print("✅ Datas configuradas, agora forcando atualização...")
+        
+        # AGORA sim, forçar a atualização com JavaScript
+        if forcar_atualizacao_com_javascript(navegador):
+            print("✅ Atualização forçada com sucesso!")
             
-            print(f"📊 Linhas após recarga: {qtd_linhas_final}")
+            # Verificação final
+            qtd_final = navegador.execute_script("""
+                return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
+            """)
             
-            if qtd_linhas_final <= 25:
-                print("✅ Recarga resolveu o problema!")
-                return True
-            else:
-                print(f"❌ Ainda com {qtd_linhas_final} linhas. Investigando...")
-                
-                # Verificar quais datas estão sendo mostradas
-                datas_mostradas = navegador.execute_script("""
+            print(f"📊 VERIFICAÇÃO FINAL - Linhas no relatório: {qtd_final}")
+            
+            # Se ainda estiver errado, mostrar as primeiras datas para debug
+            if qtd_final > 25:
+                datas_debug = navegador.execute_script("""
                     var linhas = document.querySelectorAll('.tabela-calculos-wrapper tbody tr');
                     var primeirasDatas = [];
-                    for(var i=0; i<Math.min(3, linhas.length); i++) {
+                    for(var i=0; i<Math.min(5, linhas.length); i++) {
                         var celulas = linhas[i].querySelectorAll('td');
                         if(celulas.length >= 3) {
                             primeirasDatas.push(celulas[2]?.innerText || '');
@@ -284,46 +352,78 @@ def configurar_datas_com_javascript_agressivo(navegador):
                     }
                     return primeirasDatas;
                 """)
-                print(f"📅 Primeiras datas mostradas: {datas_mostradas}")
-        
-        return True
-        
-    except Exception as e:
-        print(f"❌ Erro: {e}")
-        return False
-
-
-def atualizar_relatorio(navegador):
-    """Clica no botão Atualizar para aplicar as datas"""
-    print("\n3️⃣ ATUALIZANDO RELATÓRIO...")
-    try:
-        botao_atualizar = WebDriverWait(navegador, 10).until(
-            EC.element_to_be_clickable((By.ID, "btnAtualizar"))
-        )
-        botao_atualizar.click()
-        print("🔄 Atualizando relatório...")
-        time.sleep(5)
-        
-        # Print após atualizar
-        tirar_print(navegador, "03_apos_atualizar.png", "(após atualizar relatório)")
-        
-        print("✅ RELATÓRIO ATUALIZADO COM SUCESSO!")
-        return True
-    except Exception as e:
-        print(f"❌ Erro ao atualizar relatório: {e}")
-        return False
-
-
-def configurar_datas_relatorio(navegador):
-    """Configura as datas do relatório usando JavaScript"""
-    periodo_pop_up(navegador)
-    
-    # Usar apenas JavaScript agressivo (abandonar digitação)
-    if configurar_datas_com_javascript_agressivo(navegador):
-        return True
+                print(f"⚠️ DEBUG - Primeiras 5 datas mostradas: {datas_debug}")
+            
+            return True
     
     print("❌ Falha ao configurar datas")
     return False
+
+
+# 🔥 Opcional: Função de emergência para recarregar tudo
+def resetar_e_aplicar_filtro(navegador):
+    """Função de emergência: recarrega a página e reaplica tudo"""
+    
+    print("\n🚨 MODO EMERGÊNCIA: Recarregando página...")
+    
+    try:
+        # Salvar URL atual
+        url_atual = navegador.current_url
+        
+        # Recarregar a página
+        navegador.get("https://pontoweb.secullum.com.br/#/calculos")
+        time.sleep(5)
+        
+        # Reconfigurar datas
+        hoje = datetime.now()
+        ontem = hoje - timedelta(days=1)
+        data_inicio = f"01/{hoje.month:02d}/{hoje.year}"
+        data_fim = f"{ontem.day:02d}/{ontem.month:02d}/{ontem.year}"
+        
+        # Script completo
+        script_completo = f"""
+        // Configurar datas
+        var inicio = document.getElementById('dataInicio');
+        var fim = document.getElementById('dataFim');
+        
+        if(inicio && fim) {{
+            inicio.value = '{data_inicio}';
+            fim.value = '{data_fim}';
+            
+            // Disparar eventos
+            inicio.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            inicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
+            fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
+            
+            // Clicar no botão MÚLTIPLAS VEZES
+            var btn = document.getElementById('btnAtualizar');
+            if(btn) {{
+                for(var i=0; i<3; i++) {{
+                    btn.click();
+                    btn.dispatchEvent(new MouseEvent('click', {{ bubbles: true }}));
+                }}
+            }}
+            
+            return true;
+        }}
+        return false;
+        """
+        
+        navegador.execute_script(script_completo)
+        time.sleep(7)
+        
+        # Verificar resultado
+        qtd = navegador.execute_script("""
+            return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
+        """)
+        
+        print(f"📊 Linhas após emergência: {qtd}")
+        return qtd <= 25
+        
+    except Exception as e:
+        print(f"❌ Erro na emergência: {e}")
+        return False
 
 
 def obter_funcionario_atual(navegador):
