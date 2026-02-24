@@ -1,9 +1,5 @@
 # %%
-# %%
-# dados_ponto.py - VERSÃO REVISADA COM DIGITAÇÃO DIRETA
-# %%
-# %%
-# dados_ponto.py - VERSÃO OTIMIZADA PARA GITHUB ACTIONS
+# dados_ponto.py - VERSÃO DEFINITIVA COM JAVASCRIPT E PRINTS
 # %%
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -14,9 +10,26 @@ import time
 from datetime import datetime, timedelta
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 import os
+import pathlib
 
 # Detectar se está rodando no GitHub Actions
 MODO_GITHUB = os.getenv('GITHUB_ACTIONS') == 'true'
+
+# Configurar pasta para prints
+pasta_arquivo = pathlib.Path(__file__).parent.parent
+pasta_prints = os.path.join(pasta_arquivo, "prints")
+os.makedirs(pasta_prints, exist_ok=True)
+
+def tirar_print(navegador, nome_arquivo, descricao=""):
+    """Tira print para debug"""
+    try:
+        caminho = os.path.join(pasta_prints, nome_arquivo)
+        navegador.save_screenshot(caminho)
+        print(f"📸 Print salvo: {nome_arquivo} {descricao}")
+        return True
+    except Exception as e:
+        print(f"❌ Erro ao tirar print: {e}")
+        return False
 
 # 📓 Acessar área de cálculos - VERSÃO OTIMIZADA
 def acessar_calculos(navegador):
@@ -25,6 +38,9 @@ def acessar_calculos(navegador):
     print("\n" + "=" * 50)
     print("🔍 TENTANDO ACESSAR RELATÓRIOS E CÁLCULOS")
     print("=" * 50)
+    
+    # Print antes de acessar
+    tirar_print(navegador, "00_antes_acessar.png", "(antes de acessar cálculos)")
     
     # Tempos de espera diferentes para GitHub Actions
     if MODO_GITHUB:
@@ -61,6 +77,7 @@ def acessar_calculos(navegador):
         print("🖱 Clicou em Cálculos")
         time.sleep(3)
         print("✅✅✅ ACESSO AOS CÁLCULOS REALIZADO!")
+        tirar_print(navegador, "01_acessou_calculos.png", "(após acessar cálculos)")
         return True
     except Exception as e:
         print(f"⚠️ Não encontrou 'Cálculos' por ID: {e}")
@@ -77,6 +94,7 @@ def acessar_calculos(navegador):
                     print(f"🖱 Clicou em: {elem.text[:50]}")
                     time.sleep(3)
                     print("✅✅✅ ACESSO AOS CÁLCULOS REALIZADO!")
+                    tirar_print(navegador, "01_acessou_calculos.png", "(após acessar cálculos)")
                     return True
     except Exception as e:
         print(f"⚠️ Busca genérica falhou: {e}")
@@ -98,6 +116,7 @@ def acessar_calculos(navegador):
         if resultado:
             print("✅ JavaScript conseguiu clicar!")
             time.sleep(3)
+            tirar_print(navegador, "01_acessou_calculos.png", "(após acessar cálculos)")
             return True
     except Exception as e:
         print(f"⚠️ JavaScript falhou: {e}")
@@ -109,29 +128,12 @@ def acessar_calculos(navegador):
         time.sleep(5)
         if "calculos" in navegador.current_url.lower():
             print("✅ URL direta funcionou!")
+            tirar_print(navegador, "01_acessou_calculos.png", "(após URL direta)")
             return True
     except:
         pass
     
     print("\n❌❌❌ NÃO CONSEGUIU ACESSAR CÁLCULOS")
-    
-    # DEBUG: Salvar HTML para análise
-    if MODO_GITHUB:
-        try:
-            html = navegador.page_source
-            with open("debug_acessar_calculos.html", "w", encoding="utf-8") as f:
-                f.write(html)
-            print("📄 HTML salvo para debug: debug_acessar_calculos.html")
-            
-            # Listar textos visíveis
-            textos = navegador.find_elements(By.XPATH, "//*[text()]")
-            print("\n📋 Textos encontrados na página:")
-            for t in textos[:20]:  # Primeiros 20
-                if t.text.strip():
-                    print(f"   - '{t.text.strip()}'")
-        except:
-            pass
-    
     return False
 
 
@@ -159,109 +161,132 @@ def periodo_pop_up(navegador):
         return False
 
 
-# 📅 CONFIGURAR DATAS DIGITANDO DIRETAMENTE (igual ao seu original)
-def configurar_datas_digitando(navegador):
-    """Configura as datas usando JavaScript direto (mais confiável)"""
+def configurar_datas_com_javascript_agressivo(navegador):
+    """Configura datas usando JavaScript MUITO agressivo - 100% confiável"""
     
     hoje = datetime.now()
     ontem = hoje - timedelta(days=1)
     
+    # FORMATO AMERICANO (MM/DD/YYYY) para enviar ao site
+    data_inicio_us = f"{hoje.month:02d}/01/{hoje.year}"
+    data_fim_us = f"{ontem.month:02d}/{ontem.day:02d}/{ontem.year}"
+    
+    # FORMATO BRASILEIRO (DD/MM/YYYY) só para exibição
+    data_inicio_br = f"01/{hoje.month:02d}/{hoje.year}"
+    data_fim_br = f"{ontem.day:02d}/{ontem.month:02d}/{ontem.year}"
+    
     print("=" * 50)
-    print("📅 CONFIGURANDO DATAS")
-    print(f"Data início: 01/{hoje.month:02d}/{hoje.year}")
-    print(f"Data fim: {ontem.day:02d}/{ontem.month:02d}/{ontem.year}")
+    print("📅 CONFIGURANDO DATAS VIA JAVASCRIPT AGRESSIVO")
+    print(f"Data início (BR): {data_inicio_br} → Enviando (US): {data_inicio_us}")
+    print(f"Data fim (BR): {data_fim_br} → Enviando (US): {data_fim_us}")
     print("=" * 50)
     
     try:
-        # 🔥 SOLUÇÃO: USAR JAVASCRIPT PARA SETAR O VALOR DIRETO
-        data_inicio = f"01/{hoje.month:02d}/{hoje.year}"
-        data_fim = f"{ontem.day:02d}/{ontem.month:02d}/{ontem.year}"
-        
-        # Script JavaScript para setar valores e forçar atualização
+        # Script JavaScript super agressivo
         script = f"""
-        // Setar data início
-        var campoInicio = document.getElementById('dataInicio');
-        campoInicio.value = '{data_inicio}';
-        campoInicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
-        campoInicio.dispatchEvent(new Event('blur', {{ bubbles: true }}));
-        
-        // Setar data fim
-        var campoFim = document.getElementById('dataFim');
-        campoFim.value = '{data_fim}';
-        campoFim.dispatchEvent(new Event('change', {{ bubbles: true }}));
-        campoFim.dispatchEvent(new Event('blur', {{ bubbles: true }}));
-        
-        // Forçar atualização do componente (se for React/Angular)
-        var event = new Event('input', {{ bubbles: true }});
-        campoInicio.dispatchEvent(event);
-        campoFim.dispatchEvent(event);
-        
-        return true;
-        """
-        
-        navegador.execute_script(script)
-        print(f"✅ Datas configuradas via JavaScript")
-        time.sleep(2)
-        
-        # Verificar se funcionou
-        valor_inicio = navegador.execute_script("return document.getElementById('dataInicio').value;")
-        valor_fim = navegador.execute_script("return document.getElementById('dataFim').value;")
-        
-        print(f"📋 Data início atual: '{valor_inicio}'")
-        print(f"📋 Data fim atual: '{valor_fim}'")
-        
-        # Se ainda estiver errado, tenta uma abordagem mais agressiva
-        if valor_fim != data_fim:
-            print("⚠️ JavaScript simples falhou, tentando abordagem mais agressiva...")
+        (function() {{
+            console.log("🔄 Iniciando configuração agressiva de datas...");
             
-            # Abordagem mais agressiva: limpar e setar com foco
-            script_agressivo = f"""
-            var campoFim = document.getElementById('dataFim');
-            
-            // Focar no campo
-            campoFim.focus();
-            
-            // Limpar de todas as formas
-            campoFim.value = '';
-            campoFim.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            
-            // Setar o valor
-            campoFim.value = '{data_fim}';
-            
-            // Disparar todos os eventos possíveis
-            campoFim.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            campoFim.dispatchEvent(new Event('change', {{ bubbles: true }}));
-            campoFim.dispatchEvent(new Event('blur', {{ bubbles: true }}));
-            campoFim.dispatchEvent(new Event('keyup', {{ bubbles: true }}));
-            
-            // Se for um componente React, isso ajuda
-            if (campoFim._valueTracker) {{
-                campoFim._valueTracker.setValue('{data_fim}');
+            function dispararTodosEventos(elemento) {{
+                if (!elemento) return;
+                
+                // Disparar TODOS os eventos possíveis
+                var eventos = ['input', 'change', 'blur', 'keyup', 'keydown', 'keypress', 'focus'];
+                eventos.forEach(function(tipo) {{
+                    try {{
+                        var evento = new Event(tipo, {{ bubbles: true, cancelable: true }});
+                        elemento.dispatchEvent(evento);
+                    }} catch(e) {{}}
+                }});
+                
+                // Se for React, atualizar tracker
+                if (elemento._valueTracker) {{
+                    elemento._valueTracker.setValue(elemento.value);
+                }}
             }}
             
-            return document.getElementById('dataFim').value;
-            """
+            // 1️⃣ DATA INÍCIO
+            var inicio = document.getElementById('dataInicio');
+            if (inicio) {{
+                inicio.focus();
+                inicio.value = '';  // Limpar
+                inicio.value = '{data_inicio_us}';
+                dispararTodosEventos(inicio);
+                inicio.blur();
+                console.log("✅ Data início setada:", inicio.value);
+            }}
             
-            valor_agressivo = navegador.execute_script(script_agressivo)
-            print(f"📋 Após abordagem agressiva: '{valor_agressivo}'")
+            // 2️⃣ DATA FIM
+            var fim = document.getElementById('dataFim');
+            if (fim) {{
+                fim.focus();
+                fim.value = '';  // Limpar
+                fim.value = '{data_fim_us}';
+                dispararTodosEventos(fim);
+                fim.blur();
+                console.log("✅ Data fim setada:", fim.value);
+            }}
             
-            if valor_agressivo == data_fim:
-                print("✅ Abordagem agressiva funcionou!")
-                valor_fim = valor_agressivo
+            // 3️⃣ VERIFICAÇÃO
+            return {{
+                inicio: document.getElementById('dataInicio')?.value || 'não encontrado',
+                fim: document.getElementById('dataFim')?.value || 'não encontrado'
+            }};
+        }})();
+        """
         
-        # Verificação final
-        if valor_fim == data_fim or valor_fim == data_fim.replace('/', '-'):
-            print("✅✅✅ DATAS CONFIGURADAS COM SUCESSO!")
+        # Executar script
+        resultado = navegador.execute_script(script)
+        
+        print(f"\n🔍 VERIFICAÇÃO APÓS JAVASCRIPT:")
+        print(f"📋 Data início no campo: '{resultado['inicio']}'")
+        print(f"📋 Data fim no campo: '{resultado['fim']}'")
+        
+        # Print para ver visualmente
+        tirar_print(navegador, "02_datas_configuradas.png", "(após configurar datas)")
+        
+        # Verificar se está no formato americano (que o site aceita)
+        if resultado['fim'] == data_fim_us:
+            print("✅✅✅ DATAS CONFIGURADAS COM SUCESSO (formato US)!")
+            
+            # AGORA CONVERTEMOS OS DADOS PARA BR QUANDO SALVARMOS NA PLANILHA
+            print(f"📌 LEMBRETE: Os dados serão convertidos para formato BR ao salvar na planilha")
             return True
         else:
-            print(f"❌ Ainda errado: esperado '{data_fim}', obtido '{valor_fim}'")
+            print(f"⚠️ Data fim esperada: '{data_fim_us}', obtida: '{resultado['fim']}'")
             
-            # Última tentativa: usar o método antigo mas com JavaScript puro
-            return configurar_datas_javascript(navegador)
+            # TENTATIVA 2: Abordagem ainda mais agressiva
+            print("\n🔄 Tentativa 2: Abordagem com timeout e múltiplas tentativas...")
+            
+            for tentativa in range(3):
+                script_retry = f"""
+                var fim = document.getElementById('dataFim');
+                fim.focus();
+                fim.select();
+                document.execCommand('selectAll');
+                document.execCommand('delete');
+                fim.value = '{data_fim_us}';
+                fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                return document.getElementById('dataFim').value;
+                """
+                
+                valor = navegador.execute_script(script_retry)
+                print(f"  Tentativa {tentativa+1}: '{valor}'")
+                time.sleep(1)
+                
+                if valor == data_fim_us:
+                    print("✅ Sucesso na tentativa", tentativa+1)
+                    tirar_print(navegador, "02_datas_configuradas_final.png", "(após múltiplas tentativas)")
+                    return True
+            
+            return False
             
     except Exception as e:
-        print(f"❌ Erro: {e}")
-        return configurar_datas_javascript(navegador)
+        print(f"❌ Erro no JavaScript agressivo: {e}")
+        tirar_print(navegador, "02_erro_datas.png", "(erro ao configurar datas)")
+        return False
+
 
 def atualizar_relatorio(navegador):
     """Clica no botão Atualizar para aplicar as datas"""
@@ -273,6 +298,10 @@ def atualizar_relatorio(navegador):
         botao_atualizar.click()
         print("🔄 Atualizando relatório...")
         time.sleep(5)
+        
+        # Print após atualizar
+        tirar_print(navegador, "03_apos_atualizar.png", "(após atualizar relatório)")
+        
         print("✅ RELATÓRIO ATUALIZADO COM SUCESSO!")
         return True
     except Exception as e:
@@ -280,52 +309,15 @@ def atualizar_relatorio(navegador):
         return False
 
 
-def configurar_datas_javascript(navegador):
-    """Configura datas usando JavaScript"""
-    
-    hoje = datetime.now()
-    ontem = hoje - timedelta(days=1)
-    
-    data_inicio = f"01/{hoje.month:02d}/{hoje.year}"
-    data_fim = f"{ontem.day:02d}/{ontem.month:02d}/{ontem.year}"
-    
-    try:
-        script_inicio = f"""
-        document.getElementById('dataInicio').value = '{data_inicio}';
-        document.getElementById('dataInicio').dispatchEvent(new Event('change', {{ bubbles: true }}));
-        """
-        script_fim = f"""
-        document.getElementById('dataFim').value = '{data_fim}';
-        document.getElementById('dataFim').dispatchEvent(new Event('change', {{ bubbles: true }}));
-        """
-        
-        navegador.execute_script(script_inicio)
-        time.sleep(1)
-        navegador.execute_script(script_fim)
-        time.sleep(1)
-        
-        valor_inicio = navegador.execute_script("return document.getElementById('dataInicio').value;")
-        valor_fim = navegador.execute_script("return document.getElementById('dataFim').value;")
-        
-        if valor_inicio == data_inicio and valor_fim == data_fim:
-            print("✅✅✅ DATAS CONFIGURADAS COM JAVASCRIPT!")
-            return True
-        return False
-    except Exception as e:
-        print(f"❌ Erro com JavaScript: {e}")
-        return False
-
-
 def configurar_datas_relatorio(navegador):
-    """Configura as datas do relatório"""
+    """Configura as datas do relatório usando JavaScript"""
     periodo_pop_up(navegador)
     
-    if configurar_datas_digitando(navegador):
+    # Usar apenas JavaScript agressivo (abandonar digitação)
+    if configurar_datas_com_javascript_agressivo(navegador):
         return atualizar_relatorio(navegador)
     
-    if configurar_datas_javascript(navegador):
-        return atualizar_relatorio(navegador)
-    
+    print("❌ Falha ao configurar datas")
     return False
 
 
@@ -418,6 +410,7 @@ def extrair_dados(navegador):
         print(f"❌ Erro: {e}")
         return pd.DataFrame()
 
+
 def processar_todos_funcionarios(navegador, callback_processar, max_tentativas=40):
     """Processa funcionários com limite de tentativas"""
 
@@ -478,6 +471,9 @@ def processar_todos_funcionarios(navegador, callback_processar, max_tentativas=4
     print("=" * 50)
     print(f"✅ Processados com sucesso: {contador}")
     print(f"📜 Nomes únicos encontrados: {len(historico_nomes)}")
+    
+    # Print final
+    tirar_print(navegador, "99_final.png", "(após processamento)")
 
     return contador
 
@@ -490,59 +486,3 @@ def dados(navegador):
         return None, None
     df = extrair_dados(navegador)
     return nome, df
-
-
-# #%%
-# from fazer_login import *
-
-# # 🧪 TESTE SIMPLES
-# if __name__ == "__main__":
-#     print("🧪 TESTANDO VERSÃO SIMPLES (40 tentativas)")
-#     print("=" * 50)
-
-#     navegador = login()
-#     time.sleep(3)
-
-#     #%%
-
-#     # 1. Acessar cálculos (só entra na área)
-#     sucesso_acesso = acessar_calculos(navegador)
-
-# #%%
-#     if sucesso_acesso:
-        
-        
-
-#         # 2. Configurar datas no calendário
-#         sucesso_config = configurar_datas_relatorio(navegador)
-#         # if sucesso_config:
-#         #     # 3. Extrair dados
-#         #     dados = extrair_dados(navegador)
-#         #     if not dados.empty:
-#         #         print(f"\n✅ Dados extraídos: {len(dados)} registros")
-#         #         print(dados.to_string(index=False))
-#         #     else:
-#         #         print("❌ Nenhum dado extraído")
-#         # else:
-#         #     print("❌ Falha ao configurar datas")
-#     else:
-#         print("❌ Falha ao acessar cálculos")
-
-#     time.sleep(3)
- 
-
-
-    # # Função de teste
-    # def callback_teste(nome, dados):
-    #     print(f"   📝 Callback: Processando {nome} ({len(dados)} dias)")
-    #     return True
-
-    # # Executa
-    # total = processar_todos_funcionarios(
-    #     navegador=navegador,
-    #     callback_processar=callback_teste,
-    #     max_tentativas=40  # ← Você pode mudar este número!
-    # )
-
-    # print(f"\n🎯 RESULTADO: {total} funcionários processados")
-    # navegador.quit()
