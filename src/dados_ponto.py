@@ -162,66 +162,75 @@ def periodo_pop_up(navegador):
 
 # 🔥 CORREÇÃO: ADICIONAR O DEF QUE ESTAVA FALTANDO
 def configurar_datas_com_javascript_agressivo(navegador):
-    """Configura datas usando JavaScript - AGORA NO FORMATO BR"""
+    """Configura datas e FORÇA o filtro a aplicar"""
     
     hoje = datetime.now()
     ontem = hoje - timedelta(days=1)
     
-    # FORMATO BRASILEIRO (DD/MM/YYYY) que o site ENTENDE e MOSTRA
-    data_inicio_br = f"01/{hoje.month:02d}/{hoje.year}"
-    data_fim_br = f"{ontem.day:02d}/{ontem.month:02d}/{ontem.year}"
+    # Formato BR (dia/mês/ano) - que o site USA
+    data_inicio = f"01/{hoje.month:02d}/{hoje.year}"
+    data_fim = f"{ontem.day:02d}/{ontem.month:02d}/{ontem.year}"
     
     print("=" * 50)
-    print("📅 CONFIGURANDO DATAS VIA JAVASCRIPT (FORMATO BR)")
-    print(f"Data início: {data_inicio_br}")
-    print(f"Data fim: {data_fim_br}")
+    print("📅 CONFIGURANDO DATAS")
+    print(f"Data início: {data_inicio}")
+    print(f"Data fim: {data_fim}")
     print("=" * 50)
     
     try:
-        # Script JavaScript para setar as datas no formato BR
-        script = f"""
-        // Função para setar data
-        function setData(id, valor) {{
-            var campo = document.getElementById(id);
-            if (!campo) return false;
-            
-            campo.focus();
-            campo.value = valor;
-            campo.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            campo.dispatchEvent(new Event('change', {{ bubbles: true }}));
-            campo.blur();
-            
-            return true;
-        }}
+        # 1. Primeiro setar as datas
+        script_setar = f"""
+        // Setar data início
+        var inicio = document.getElementById('dataInicio');
+        inicio.value = '{data_inicio}';
+        inicio.dispatchEvent(new Event('input', {{ bubbles: true }}));
+        inicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
         
-        // Setar datas
-        setData('dataInicio', '{data_inicio_br}');
-        setData('dataFim', '{data_fim_br}');
+        // Setar data fim
+        var fim = document.getElementById('dataFim');
+        fim.value = '{data_fim}';
+        fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
+        fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
         
-        return {{
-            inicio: document.getElementById('dataInicio')?.value,
-            fim: document.getElementById('dataFim')?.value
-        }};
+        return {{ inicio: inicio.value, fim: fim.value }};
         """
         
-        resultado = navegador.execute_script(script)
+        resultado = navegador.execute_script(script_setar)
+        print(f"📋 Datas setadas: {resultado}")
         
-        print(f"\n🔍 RESULTADO:")
-        print(f"📋 Data início: '{resultado.get('inicio')}'")
-        print(f"📋 Data fim: '{resultado.get('fim')}'")
+        # 2. AGORA FORÇAR O FILTRO (clicar no botão atualizar)
+        print("🔄 Forçando atualização do filtro...")
         
-        # Print para ver
-        time.sleep(2)
-        tirar_print(navegador, "02_datas_configuradas.png", "(após configurar datas)")
+        script_clique = """
+        var btn = document.getElementById('btnAtualizar');
+        if (btn) {
+            btn.click();
+            return true;
+        }
+        return false;
+        """
         
-        # Verificar se as datas estão no formato esperado
-        if resultado.get('inicio') == data_inicio_br and resultado.get('fim') == data_fim_br:
-            print("✅✅✅ DATAS CONFIGURADAS COM SUCESSO!")
-            return True
-        else:
-            print("⚠️ Datas não configuradas corretamente")
-            return False
+        navegador.execute_script(script_clique)
+        time.sleep(5)  # Esperar atualizar
+        
+        # 3. Print para ver o resultado
+        tirar_print(navegador, "02_apos_filtro.png", "(após aplicar filtro)")
+        
+        # 4. Verificar quantas linhas tem
+        qtd_linhas = navegador.execute_script("""
+            return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
+        """)
+        
+        print(f"📊 Linhas após filtro: {qtd_linhas}")
+        
+        # Se tiver muitas linhas (>31), algo errado
+        if qtd_linhas > 31:
+            print("⚠️ Ainda parece ter muitos dias, tentando novamente...")
+            navegador.execute_script("document.getElementById('btnAtualizar').click();")
+            time.sleep(5)
             
+        return True
+        
     except Exception as e:
         print(f"❌ Erro: {e}")
         return False
