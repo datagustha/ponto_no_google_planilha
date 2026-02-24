@@ -1,13 +1,13 @@
-# .github/workflows/testar_idioma.yml
-name: Testar Idioma
+# .github/workflows/testar_com_login.yml
+name: Testar com Login
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # Permite executar manualmente
+  workflow_dispatch:
 
 jobs:
-  test-idioma:
+  test-login:
     runs-on: ubuntu-latest
     
     steps:
@@ -20,12 +20,25 @@ jobs:
     
     - name: Install dependencies
       run: |
-        pip install selenium webdriver-manager
+        pip install selenium webdriver-manager python-dotenv
     
     - name: Install Chrome
       run: |
         sudo apt-get update
         sudo apt-get install -y google-chrome-stable
     
-    - name: Diagnosticar idioma
-      run: python diagnosticar_idioma.py
+    - name: Criar arquivo .env com secrets
+      run: |
+        echo "PONTOMAIS_USER=${{ secrets.PONTOMAIS_USER }}" >> .env
+        echo "PONTOMAIS_PASS=${{ secrets.PONTOMAIS_PASS }}" >> .env
+    
+    - name: Executar diagnóstico com login
+      run: python diagnosticar_com_login.py
+    
+    - name: Upload screenshots
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: screenshots-login
+        path: screenshots/
+        retention-days: 7
