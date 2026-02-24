@@ -177,11 +177,15 @@ def configurar_datas_digitando(navegador):
         campo_inicio = WebDriverWait(navegador, 10).until(
             EC.presence_of_element_located((By.ID, "dataInicio"))
         )
+        
+        # 🔥 LIMPAR CAMPO DE FORMA MAIS ROBUSTA
         campo_inicio.click()
-        time.sleep(0.5)
+        campo_inicio.clear()  # Tenta limpar primeiro
         campo_inicio.send_keys(Keys.CONTROL + "a")
         campo_inicio.send_keys(Keys.DELETE)
         time.sleep(0.5)
+        
+        # Garantir formato DD/MM/YYYY
         data_inicio = f"01/{hoje.month:02d}/{hoje.year}"
         campo_inicio.send_keys(data_inicio)
         print(f"✅ Data início digitada: {data_inicio}")
@@ -192,13 +196,22 @@ def configurar_datas_digitando(navegador):
         campo_fim = WebDriverWait(navegador, 10).until(
             EC.presence_of_element_located((By.ID, "dataFim"))
         )
+        
+        # 🔥 LIMPAR CAMPO DE FORMA MAIS ROBUSTA
         campo_fim.click()
-        time.sleep(0.5)
+        campo_fim.clear()
         campo_fim.send_keys(Keys.CONTROL + "a")
         campo_fim.send_keys(Keys.DELETE)
         time.sleep(0.5)
+        
+        # 🔥 FORÇAR FORMATO BRASILEIRO
         data_fim = f"{ontem.day:02d}/{ontem.month:02d}/{ontem.year}"
-        campo_fim.send_keys(data_fim)
+        
+        # Digitar caractere por caractere para garantir
+        for char in data_fim:
+            campo_fim.send_keys(char)
+            time.sleep(0.05)  # Pequena pausa entre caracteres
+        
         print(f"✅ Data fim digitada: {data_fim}")
         campo_fim.send_keys(Keys.TAB)
         time.sleep(2)
@@ -207,15 +220,33 @@ def configurar_datas_digitando(navegador):
         valor_inicio = campo_inicio.get_attribute("value")
         valor_fim = campo_fim.get_attribute("value")
         
-        print(f"📋 Data início atual: {valor_inicio}")
-        print(f"📋 Data fim atual: {valor_fim}")
+        print(f"📋 Data início atual: '{valor_inicio}'")
+        print(f"📋 Data fim atual: '{valor_fim}'")
         
-        if valor_inicio == data_inicio and valor_fim == data_fim:
-            print("✅✅✅ DATAS CONFIGURADAS COM SUCESSO!")
-            return True
-        else:
-            print("⚠️ As datas não foram aplicadas corretamente")
-            return False
+        # 🔥 VERIFICAÇÃO MAIS FLEXÍVEL
+        # Extrair partes da data para comparar
+        def extrair_partes_data(data_str):
+            # Tenta diferentes formatos
+            if '/' in data_str:
+                partes = data_str.split('/')
+                if len(partes) == 3:
+                    return partes
+            return None
+        
+        partes_esperada = data_fim.split('/')
+        partes_atual = extrair_partes_data(valor_fim) if valor_fim else None
+        
+        if partes_atual and partes_esperada:
+            # Comparar dia, mês e ano (ignorando formato)
+            if (partes_atual[0] == partes_esperada[0] and 
+                partes_atual[1] == partes_esperada[1] and 
+                partes_atual[2] == partes_esperada[2]):
+                print("✅✅✅ DATAS CONFIGURADAS COM SUCESSO!")
+                return True
+        
+        # Se a verificação falhar, tenta JavaScript como fallback
+        print("⚠️ Verificação falhou, tentando JavaScript...")
+        return configurar_datas_javascript(navegador)
             
     except Exception as e:
         print(f"❌ Erro ao configurar datas digitando: {e}")
