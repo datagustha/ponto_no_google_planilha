@@ -3,7 +3,7 @@ name: Executar Ponto Google Planilha
 on:
   schedule:
     # Roda todo dia às 08:00 Brasília (11:00 UTC)
-    - cron: '55 14 * * *'  # Segunda a sexta
+    - cron: '45 12 * * *'  # Segunda a sexta
   workflow_dispatch:  # Permite execução manual
 
 jobs:
