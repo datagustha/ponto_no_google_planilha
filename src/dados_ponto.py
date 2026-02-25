@@ -32,7 +32,7 @@ def tirar_print(navegador, nome_arquivo, descricao=""):
 
 # 📓 Acessar área de cálculos - VERSÃO OTIMIZADA
 def acessar_calculos(navegador):
-    """Acessa a área de cálculos do ponto"""
+    """Acessa a área de cálculos do ponto - VERSÃO ULTRA ROBUSTA"""
     
     print("\n" + "=" * 50)
     print("🔍 TENTANDO ACESSAR RELATÓRIOS E CÁLCULOS")
@@ -42,81 +42,177 @@ def acessar_calculos(navegador):
     
     if MODO_GITHUB:
         print("⏳ GitHub Actions detectado - usando timeouts maiores...")
-        espera_inicial = 10
-        espera_elemento = 30
+        time.sleep(15)  # Aumentei o tempo inicial
     else:
-        espera_inicial = 3
-        espera_elemento = 10
+        time.sleep(5)
     
-    time.sleep(espera_inicial)
+    # ESTRATÉGIA 1: Procurar por qualquer menu que possa conter relatórios
+    estrategias = [
+        # Menu lateral esquerdo (comum em sistemas corporativos)
+        {"desc": "Menu lateral por data-testid", "selector": "[data-testid='menu-lateral'] a, [data-testid='menu-lateral'] button"},
+        {"desc": "Menu lateral por classe", "selector": ".menu-lateral a, .sidebar a, .nav-sidebar a"},
+        {"desc": "Ícones de menu", "selector": "i.fa-bar-chart, i.fa-chart, i.fa-calculator, i.fa-table"},
+        
+        # Barra superior
+        {"desc": "Barra superior", "selector": ".navbar a, .top-bar a, .header a"},
+        
+        # Links comuns
+        {"desc": "Links com 'relatório'", "selector": "a[href*='relatorio'], a[href*='relatorios'], a[href*='report']"},
+        {"desc": "Links com 'cálculo'", "selector": "a[href*='calculo'], a[href*='calculos'], a[href*='calc']"},
+        
+        # Textos
+        {"desc": "Span com texto Relatórios", "selector": "//span[contains(text(), 'Relatórios') or contains(text(), 'RELATÓRIOS')]", "by": By.XPATH},
+        {"desc": "Span com texto Cálculos", "selector": "//span[contains(text(), 'Cálculos') or contains(text(), 'CÁLCULOS')]", "by": By.XPATH},
+        {"desc": "Div com texto", "selector": "//div[contains(text(), 'Relatórios') or contains(text(), 'Cálculos')]", "by": By.XPATH},
+    ]
     
-    # TENTATIVA 1: Procurar por "Relatórios" no menu
-    try:
-        print("\n📋 Tentativa 1: Procurando 'Relatórios' no menu...")
-        relatorio = WebDriverWait(navegador, espera_elemento).until(
-            EC.element_to_be_clickable((By.XPATH, "//span[contains(text(), 'Relatórios')]"))
-        )
-        print(f"✅ Encontrou: '{relatorio.text}'")
-        relatorio.click()
-        print("🖱 Clicou em Relatórios")
-        time.sleep(3)
-    except Exception as e:
-        print(f"⚠️ Não encontrou 'Relatórios': {e}")
+    for i, estrategia in enumerate(estrategias, 1):
+        try:
+            print(f"\n📋 Estratégia {i}: {estrategia['desc']}")
+            
+            by_method = estrategia.get('by', By.CSS_SELECTOR)
+            selector = estrategia['selector']
+            
+            elementos = WebDriverWait(navegador, 5).until(
+                EC.presence_of_all_elements_located((by_method, selector))
+            )
+            
+            if elementos:
+                print(f"✅ Encontrou {len(elementos)} elementos")
+                
+                for elem in elementos[:5]:  # Testar primeiros 5
+                    try:
+                        if elem.is_displayed() and elem.is_enabled():
+                            texto = elem.text.strip()[:50]
+                            print(f"   ➡️ Tentando clicar: '{texto}'")
+                            navegador.execute_script("arguments[0].scrollIntoView(true);", elem)
+                            time.sleep(1)
+                            elem.click()
+                            print(f"   ✅ Clicou!")
+                            time.sleep(5)
+                            
+                            # Verificar se entrou na área de cálculos
+                            if "cálculo" in navegador.current_url.lower() or "relatorio" in navegador.current_url.lower():
+                                print("✅✅✅ ACESSO AOS CÁLCULOS CONFIRMADO!")
+                                tirar_print(navegador, "01_acessou_calculos.png")
+                                return True
+                            
+                            # Verificar se apareceu campo de data
+                            campos_data = navegador.find_elements(By.ID, "dataInicio")
+                            if campos_data:
+                                print("✅✅✅ CAMPOS DE DATA ENCONTRADOS!")
+                                tirar_print(navegador, "01_acessou_calculos.png")
+                                return True
+                    except:
+                        continue
+        except:
+            continue
     
-    # TENTATIVA 2: Procurar por "Cálculos" por ID
-    try:
-        print("\n📋 Tentativa 2: Procurando 'Cálculos' por ID...")
-        calculo = WebDriverWait(navegador, espera_elemento).until(
-            EC.element_to_be_clickable((By.ID, "calculos"))
-        )
-        print(f"✅ Encontrou: '{calculo.text}'")
-        calculo.click()
-        print("🖱 Clicou em Cálculos")
-        time.sleep(3)
-        print("✅✅✅ ACESSO AOS CÁLCULOS REALIZADO!")
-        tirar_print(navegador, "01_acessou_calculos.png", "(após acessar cálculos)")
-        return True
-    except Exception as e:
-        print(f"⚠️ Não encontrou 'Cálculos' por ID: {e}")
-    
-    # TENTATIVA 3: Busca genérica por texto
-    try:
-        print("\n📋 Tentativa 3: Busca genérica por 'Cálculos'...")
-        elementos = navegador.find_elements(By.XPATH, "//*[contains(text(), 'Cálculos') or contains(text(), 'CALCULOS')]")
-        if elementos:
-            print(f"✅ Encontrou {len(elementos)} elementos")
-            for elem in elementos:
-                if elem.is_displayed() and elem.is_enabled():
-                    elem.click()
-                    print(f"🖱 Clicou em: {elem.text[:50]}")
-                    time.sleep(3)
-                    print("✅✅✅ ACESSO AOS CÁLCULOS REALIZADO!")
-                    tirar_print(navegador, "01_acessou_calculos.png", "(após acessar cálculos)")
-                    return True
-    except Exception as e:
-        print(f"⚠️ Busca genérica falhou: {e}")
-    
-    # TENTATIVA 4: JavaScript
-    try:
-        print("\n📋 Tentativa 4: Usando JavaScript...")
-        resultado = navegador.execute_script("""
-            var elementos = document.querySelectorAll('span, a, button, div');
-            for(var i=0; i<elementos.length; i++) {
-                var texto = elementos[i].textContent || '';
-                if(texto.includes('Cálculos') || texto.includes('CALCULOS')) {
-                    elementos[i].click();
-                    return true;
+    # ESTRATÉGIA 2: JavaScript para explorar todos os links
+    print("\n📋 ESTRATÉGIA FINAL: JavaScript exploratório")
+    resultado = navegador.execute_script("""
+        // Função para encontrar todos os elementos clicáveis
+        function encontrarElementosClicaveis() {
+            const elementos = document.querySelectorAll('a, button, [role="button"], .clickable, span, div');
+            const resultados = [];
+            
+            for(let elem of elementos) {
+                const texto = elem.textContent || '';
+                const html = elem.outerHTML || '';
+                const classes = elem.className || '';
+                
+                // Palavras-chave relacionadas a relatórios/cálculos
+                const keywords = ['relatório', 'relatorios', 'relatorio', 
+                                 'cálculo', 'calculo', 'calculos', 'cálculos',
+                                 'report', 'reports', 'calc', 'calculator',
+                                 'ponto', 'banco', 'horas', 'periodo'];
+                
+                for(let keyword of keywords) {
+                    if(texto.toLowerCase().includes(keyword) || 
+                       classes.toLowerCase().includes(keyword) ||
+                       html.toLowerCase().includes(keyword)) {
+                        
+                        // Tentar clicar
+                        try {
+                            elem.scrollIntoView();
+                            elem.click();
+                            return {sucesso: true, keyword: keyword, texto: texto.substring(0, 50)};
+                        } catch(e) {
+                            resultados.push({keyword, texto: texto.substring(0, 50)});
+                        }
+                        break;
+                    }
                 }
             }
-            return false;
-        """)
-        if resultado:
-            print("✅ JavaScript conseguiu clicar!")
-            time.sleep(3)
-            tirar_print(navegador, "01_acessou_calculos.png", "(após acessar cálculos)")
+            
+            return {sucesso: false, encontrados: resultados};
+        }
+        
+        return encontrarElementosClicaveis();
+    """)
+    
+    if resultado.get('sucesso'):
+        print(f"✅ JavaScript clicou em elemento com: {resultado.get('keyword')}")
+        print(f"   Texto: {resultado.get('texto')}")
+        time.sleep(5)
+        
+        # Verificar novamente
+        campos_data = navegador.find_elements(By.ID, "dataInicio")
+        if campos_data:
+            print("✅✅✅ ACESSO AOS CÁLCULOS CONFIRMADO!")
+            tirar_print(navegador, "01_acessou_calculos.png")
             return True
-    except Exception as e:
-        print(f"⚠️ JavaScript falhou: {e}")
+    else:
+        print("⚠️ JavaScript não conseguiu clicar automaticamente")
+        if resultado.get('encontrados'):
+            print(f"   Elementos encontrados: {len(resultado['encontrados'])}")
+    
+    # ESTRATÉGIA 3: Navegação direta por URL (se souber o padrão)
+    try:
+        print("\n📋 Tentando navegação direta por URL...")
+        url_atual = navegador.current_url
+        dominios_possiveis = [
+            url_atual + "relatorios",
+            url_atual + "calculos",
+            url_atual.replace("/dashboard", "/relatorios"),
+            url_atual.replace("/home", "/relatorios"),
+        ]
+        
+        for url_tentativa in dominios_possiveis:
+            try:
+                navegador.get(url_tentativa)
+                time.sleep(5)
+                if "cálculo" in navegador.current_url.lower() or "relatorio" in navegador.current_url.lower():
+                    print(f"✅ Navegação direta funcionou: {url_tentativa}")
+                    return True
+            except:
+                continue
+    except:
+        pass
+    
+    # PRINT DE DIAGNÓSTICO
+    print("\n📸 Tirando print de diagnóstico...")
+    tirar_print(navegador, "diagnostico_erro_acesso.png")
+    
+    # Listar todos os links na página
+    todos_links = navegador.execute_script("""
+        const links = document.querySelectorAll('a, button');
+        const resultado = [];
+        links.forEach(l => {
+            if(l.innerText) {
+                resultado.push({
+                    texto: l.innerText.substring(0, 50),
+                    tag: l.tagName,
+                    classe: l.className
+                });
+            }
+        });
+        return resultado;
+    """)
+    
+    print("\n📋 LINKS ENCONTRADOS NA PÁGINA:")
+    for i, link in enumerate(todos_links[:20]):  # Mostrar primeiros 20
+        print(f"   {i+1}. {link['tag']}: '{link['texto']}' (classe: {link['classe']})")
     
     print("\n❌❌❌ NÃO CONSEGUIU ACESSAR CÁLCULOS")
     return False
