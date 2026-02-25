@@ -80,28 +80,110 @@ def tirar_print(navegador, nome_arquivo, descricao=""):
 # ACESSAR RELATÓRIOS
 # =========================================================
 
+# 📓 Acessar área de cálculos - VERSÃO OTIMIZADA
 def acessar_calculos(navegador):
-    print("\n" + "=" * 60)
-    print("🔍 ACESSANDO RELATÓRIOS / CÁLCULOS")
-    print("=" * 60)
+    """Acessa a área de cálculos do ponto - OTIMIZADO PARA GITHUB ACTIONS"""
 
-    tirar_print(navegador, "00_antes_acessar.png")
+    print("\n" + "=" * 50)
+    print("🔍 TENTANDO ACESSAR RELATÓRIOS E CÁLCULOS")
+    print("=" * 50)
 
-    time.sleep(10 if MODO_GITHUB else 5)
+    # Print antes de acessar
+    tirar_print(navegador, "00_antes_acessar.png", "(antes de acessar cálculos)")
 
+    # Tempos de espera diferentes para GitHub Actions
+    if MODO_GITHUB:
+        print("⏳ GitHub Actions detectado - usando timeouts maiores...")
+        espera_inicial = 10
+        espera_elemento = 30
+    else:
+        espera_inicial = 3
+        espera_elemento = 10
+
+    time.sleep(espera_inicial)
+
+    # TENTATIVA 1: Procurar por "Relatórios" no menu
     try:
-        navegador.get("https://pontoweb.secullum.com.br/#/homerelatorios")
-        WebDriverWait(navegador, 30).until(
-            EC.presence_of_element_located((By.ID, "dataInicio"))
+        print("\n📋 Tentativa 1: Procurando 'Relatórios' no menu...")
+        relatorio = WebDriverWait(navegador, espera_elemento).until(
+            EC.element_to_be_clickable((By.XPATH, "//span[contains(text(), 'Relatórios')]"))
         )
-        print("✅ Página de relatórios carregada")
-        tirar_print(navegador, "01_relatorios.png")
-        return True
-
+        print(f"✅ Encontrou: '{relatorio.text}'")
+        relatorio.click()
+        print("🖱 Clicou em Relatórios")
+        time.sleep(3)
     except Exception as e:
-        print(f"❌ Falha ao acessar relatórios: {e}")
-        tirar_print(navegador, "erro_relatorios.png")
-        return False
+        print(f"⚠️ Não encontrou 'Relatórios': {e}")
+
+    # TENTATIVA 2: Procurar por "Cálculos" por ID
+    try:
+        print("\n📋 Tentativa 2: Procurando 'Cálculos' por ID...")
+        calculo = WebDriverWait(navegador, espera_elemento).until(
+            EC.element_to_be_clickable((By.ID, "calculos"))
+        )
+        print(f"✅ Encontrou: '{calculo.text}'")
+        calculo.click()
+        print("🖱 Clicou em Cálculos")
+        time.sleep(3)
+        print("✅✅✅ ACESSO AOS CÁLCULOS REALIZADO!")
+        tirar_print(navegador, "01_acessou_calculos.png", "(após acessar cálculos)")
+        return True
+    except Exception as e:
+        print(f"⚠️ Não encontrou 'Cálculos' por ID: {e}")
+
+    # TENTATIVA 3: Busca genérica por texto
+    try:
+        print("\n📋 Tentativa 3: Busca genérica por 'Cálculos'...")
+        elementos = navegador.find_elements(By.XPATH, "//*[contains(text(), 'Cálculos') or contains(text(), 'CALCULOS')]")
+        if elementos:
+            print(f"✅ Encontrou {len(elementos)} elementos")
+            for elem in elementos:
+                if elem.is_displayed() and elem.is_enabled():
+                    elem.click()
+                    print(f"🖱 Clicou em: {elem.text[:50]}")
+                    time.sleep(3)
+                    print("✅✅✅ ACESSO AOS CÁLCULOS REALIZADO!")
+                    tirar_print(navegador, "01_acessou_calculos.png", "(após acessar cálculos)")
+                    return True
+    except Exception as e:
+        print(f"⚠️ Busca genérica falhou: {e}")
+
+    # TENTATIVA 4: JavaScript
+    try:
+        print("\n📋 Tentativa 4: Usando JavaScript...")
+        resultado = navegador.execute_script("""
+            var elementos = document.querySelectorAll('span, a, button, div');
+            for(var i=0; i<elementos.length; i++) {
+                var texto = elementos[i].textContent || '';
+                if(texto.includes('Cálculos') || texto.includes('CALCULOS')) {
+                    elementos[i].click();
+                    return true;
+                }
+            }
+            return false;
+        """)
+        if resultado:
+            print("✅ JavaScript conseguiu clicar!")
+            time.sleep(3)
+            tirar_print(navegador, "01_acessou_calculos.png", "(após acessar cálculos)")
+            return True
+    except Exception as e:
+        print(f"⚠️ JavaScript falhou: {e}")
+
+    # TENTATIVA 5: Tentar URL direta (se souber)
+    try:
+        print("\n📋 Tentativa 5: Tentando URL direta...")
+        navegador.get("https://pontoweb.secullum.com.br/#/calculos")
+        time.sleep(5)
+        if "calculos" in navegador.current_url.lower():
+            print("✅ URL direta funcionou!")
+            tirar_print(navegador, "01_acessou_calculos.png", "(após URL direta)")
+            return True
+    except:
+        pass
+
+    print("\n❌❌❌ NÃO CONSEGUIU ACESSAR CÁLCULOS")
+    return False
 
 
 # =========================================================
