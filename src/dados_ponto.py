@@ -1,5 +1,4 @@
-# %%
-# dados_ponto.py - VERSÃO DEFINITIVA - CORRIGIDA: AGORA CLICA NO BOTÃO!
+# dados_ponto.py - CORREÇÃO: FORÇAR ATUALIZAÇÃO MESMO COM DATAS IGUAIS
 # %%
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -33,16 +32,14 @@ def tirar_print(navegador, nome_arquivo, descricao=""):
 
 # 📓 Acessar área de cálculos - VERSÃO OTIMIZADA
 def acessar_calculos(navegador):
-    """Acessa a área de cálculos do ponto - OTIMIZADO PARA GITHUB ACTIONS"""
+    """Acessa a área de cálculos do ponto"""
     
     print("\n" + "=" * 50)
     print("🔍 TENTANDO ACESSAR RELATÓRIOS E CÁLCULOS")
     print("=" * 50)
     
-    # Print antes de acessar
     tirar_print(navegador, "00_antes_acessar.png", "(antes de acessar cálculos)")
     
-    # Tempos de espera diferentes para GitHub Actions
     if MODO_GITHUB:
         print("⏳ GitHub Actions detectado - usando timeouts maiores...")
         espera_inicial = 10
@@ -121,18 +118,6 @@ def acessar_calculos(navegador):
     except Exception as e:
         print(f"⚠️ JavaScript falhou: {e}")
     
-    # TENTATIVA 5: Tentar URL direta (se souber)
-    try:
-        print("\n📋 Tentativa 5: Tentando URL direta...")
-        navegador.get("https://pontoweb.secullum.com.br/#/calculos")
-        time.sleep(5)
-        if "calculos" in navegador.current_url.lower():
-            print("✅ URL direta funcionou!")
-            tirar_print(navegador, "01_acessou_calculos.png", "(após URL direta)")
-            return True
-    except:
-        pass
-    
     print("\n❌❌❌ NÃO CONSEGUIU ACESSAR CÁLCULOS")
     return False
 
@@ -161,9 +146,9 @@ def periodo_pop_up(navegador):
         return False
 
 
-# 🔥 FUNÇÃO 1: Configurar datas (sem clicar no botão ainda)
-def configurar_datas_apenas(navegador):
-    """Apenas configura as datas, sem clicar no botão"""
+# 🔥 FUNÇÃO CORRIGIDA: Configurar datas com send_keys
+def configurar_datas_com_send_keys(navegador):
+    """Configura as datas usando send_keys para garantir que sejam enviadas"""
     
     hoje = datetime.now()
     ontem = hoje - timedelta(days=1)
@@ -173,144 +158,182 @@ def configurar_datas_apenas(navegador):
     data_fim = f"{ontem.day:02d}/{ontem.month:02d}/{ontem.year}"
     
     print("=" * 50)
-    print("📅 CONFIGURANDO DATAS")
+    print("📅 CONFIGURANDO DATAS COM SEND_KEYS")
     print(f"Data início: {data_inicio}")
     print(f"Data fim: {data_fim}")
     print("=" * 50)
     
     try:
-        script_setar = f"""
-        // Setar data início
-        var inicio = document.getElementById('dataInicio');
-        if(inicio) {{
-            inicio.value = '{data_inicio}';
-            inicio.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            inicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
-        }}
+        # PASSO 1: Limpar e setar data início com send_keys
+        print("\n🔨 Configurando DATA INÍCIO...")
+        campo_inicio = WebDriverWait(navegador, 10).until(
+            EC.presence_of_element_located((By.ID, "dataInicio"))
+        )
         
-        // Setar data fim
-        var fim = document.getElementById('dataFim');
-        if(fim) {{
-            fim.value = '{data_fim}';
-            fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
-        }}
+        # Limpar campo
+        campo_inicio.click()
+        campo_inicio.clear()
+        time.sleep(1)
         
-        return {{ 
-            inicio: inicio ? inicio.value : 'não encontrado', 
-            fim: fim ? fim.value : 'não encontrado' 
-        }};
-        """
+        # Selecionar tudo e deletar
+        campo_inicio.send_keys(Keys.CONTROL + "a")
+        campo_inicio.send_keys(Keys.DELETE)
+        time.sleep(1)
         
-        resultado = navegador.execute_script(script_setar)
-        print(f"📋 Datas setadas: {resultado}")
+        # Digitar a data caractere por caractere
+        for char in data_inicio:
+            campo_inicio.send_keys(char)
+            time.sleep(0.1)
         
-        # Verificar se as datas foram realmente setadas
-        verificacao = navegador.execute_script("""
+        # Disparar eventos
+        navegador.execute_script("""
+            var campo = document.getElementById('dataInicio');
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+            campo.dispatchEvent(new Event('change', { bubbles: true }));
+        """)
+        print(f"✅ Data início configurada: {data_inicio}")
+        
+        # PASSO 2: Limpar e setar data fim com send_keys
+        print("\n🔨 Configurando DATA FIM...")
+        campo_fim = WebDriverWait(navegador, 10).until(
+            EC.presence_of_element_located((By.ID, "dataFim"))
+        )
+        
+        # Limpar campo
+        campo_fim.click()
+        campo_fim.clear()
+        time.sleep(1)
+        
+        # Selecionar tudo e deletar
+        campo_fim.send_keys(Keys.CONTROL + "a")
+        campo_fim.send_keys(Keys.DELETE)
+        time.sleep(1)
+        
+        # Digitar a data caractere por caractere
+        for char in data_fim:
+            campo_fim.send_keys(char)
+            time.sleep(0.1)
+        
+        # Disparar eventos
+        navegador.execute_script("""
+            var campo = document.getElementById('dataFim');
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+            campo.dispatchEvent(new Event('change', { bubbles: true }));
+        """)
+        print(f"✅ Data fim configurada: {data_fim}")
+        
+        # PASSO 3: VERIFICAÇÃO - Ler os valores atuais
+        valores_atuais = navegador.execute_script("""
             return {
                 inicio: document.getElementById('dataInicio')?.value,
                 fim: document.getElementById('dataFim')?.value
             };
         """)
-        print(f"✅ Verificação - Datas atuais: {verificacao}")
         
-        return True
+        print(f"\n📋 VERIFICAÇÃO - Datas após configuração:")
+        print(f"   Data início no campo: {valores_atuais.get('inicio')}")
+        print(f"   Data fim no campo: {valores_atuais.get('fim')}")
+        
+        # Verificar se as datas foram realmente setadas
+        if valores_atuais.get('inicio') == data_inicio and valores_atuais.get('fim') == data_fim:
+            print("✅✅ DATAS CONFIGURADAS CORRETAMENTE!")
+            return True
+        else:
+            print("⚠️ Datas não correspondem ao esperado, tentando método alternativo...")
+            
+            # Método alternativo: JavaScript puro
+            navegador.execute_script(f"""
+                var inicio = document.getElementById('dataInicio');
+                var fim = document.getElementById('dataFim');
+                
+                if(inicio) {{
+                    inicio.value = '{data_inicio}';
+                    inicio.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    inicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                }}
+                
+                if(fim) {{
+                    fim.value = '{data_fim}';
+                    fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                }}
+            """)
+            
+            # Verificar novamente
+            valores_finais = navegador.execute_script("""
+                return {
+                    inicio: document.getElementById('dataInicio')?.value,
+                    fim: document.getElementById('dataFim')?.value
+                };
+            """)
+            print(f"   Após JS: Início={valores_finais.get('inicio')}, Fim={valores_finais.get('fim')}")
+            
+            return True
         
     except Exception as e:
-        print(f"❌ Erro ao configurar datas: {e}")
-        return False
+        print(f"❌ Erro ao configurar datas com send_keys: {e}")
+        
+        # Fallback: tentar JavaScript puro
+        try:
+            print("\n🔄 Tentando fallback com JavaScript...")
+            navegador.execute_script(f"""
+                var inicio = document.getElementById('dataInicio');
+                var fim = document.getElementById('dataFim');
+                
+                if(inicio) {{
+                    inicio.value = '{data_inicio}';
+                    inicio.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    inicio.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                }}
+                
+                if(fim) {{
+                    fim.value = '{data_fim}';
+                    fim.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    fim.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                }}
+            """)
+            print("✅ Fallback com JavaScript executado")
+            return True
+        except:
+            print("❌ Fallback também falhou")
+            return False
 
 
-# 🔥 FUNÇÃO 2: Clicar no botão Atualizar (separadamente)
+# 🔥 FUNÇÃO CORRIGIDA: Clicar no botão Atualizar (com verificação)
 def clicar_botao_atualizar(navegador):
-    """FUNÇÃO ESPECÍFICA PARA CLICAR NO BOTÃO ATUALIZAR"""
+    """FUNÇÃO CORRIGIDA PARA CLICAR NO BOTÃO ATUALIZAR"""
     
     print("\n" + "=" * 50)
     print("🖱️ CLICANDO NO BOTÃO ATUALIZAR (id=btnAtualizar)")
     print("=" * 50)
     
     try:
-        # VERIFICAR SE O BOTÃO EXISTE
-        botao_info = navegador.execute_script("""
-            var btn = document.getElementById('btnAtualizar');
-            if(btn) {
-                return {
-                    existe: true,
-                    texto: btn.textContent,
-                    visivel: window.getComputedStyle(btn).display !== 'none',
-                    habilitado: !btn.disabled,
-                    html: btn.outerHTML
-                };
-            }
-            return { existe: false };
-        """)
+        # MÉTODO 1: Clique com Selenium WebDriver (mais confiável)
+        print("\n🔨 MÉTODO 1: Clique com Selenium WebDriver")
+        botao = WebDriverWait(navegador, 10).until(
+            EC.element_to_be_clickable((By.ID, "btnAtualizar"))
+        )
         
-        print(f"📋 Informações do botão: {botao_info}")
+        # Rolar até o botão para garantir que está visível
+        navegador.execute_script("arguments[0].scrollIntoView(true);", botao)
+        time.sleep(1)
         
-        if not botao_info.get('existe'):
-            print("❌ Botão 'btnAtualizar' NÃO ENCONTRADO!")
-            return False
-        
-        # MÉTODO 1: Clique direto com JavaScript
-        print("\n🔨 MÉTODO 1: Clique direto com JavaScript")
-        resultado1 = navegador.execute_script("""
-            var btn = document.getElementById('btnAtualizar');
-            if(btn) {
-                btn.click();
-                return 'Clique executado';
-            }
-            return 'Falha';
-        """)
-        print(f"   ✅ {resultado1}")
-        time.sleep(3)
-        
-        # MÉTODO 2: Disparar evento de clique
-        print("\n🔨 MÉTODO 2: Disparar evento MouseEvent")
-        resultado2 = navegador.execute_script("""
-            var btn = document.getElementById('btnAtualizar');
-            if(btn) {
-                var evento = new MouseEvent('click', {
-                    view: window,
-                    bubbles: true,
-                    cancelable: true
-                });
-                btn.dispatchEvent(evento);
-                return 'Evento disparado';
-            }
-            return 'Falha';
-        """)
-        print(f"   ✅ {resultado2}")
-        time.sleep(3)
-        
-        # MÉTODO 3: Clique com Selenium
-        print("\n🔨 MÉTODO 3: Clique com Selenium WebDriver")
-        try:
-            from selenium.webdriver.common.by import By
-            from selenium.webdriver.support.ui import WebDriverWait
-            from selenium.webdriver.support import expected_conditions as EC
-            
-            botao = WebDriverWait(navegador, 5).until(
-                EC.element_to_be_clickable((By.ID, "btnAtualizar"))
-            )
-            botao.click()
-            print("   ✅ Clique com Selenium executado")
-        except Exception as e:
-            print(f"   ⚠️ Clique com Selenium falhou: {e}")
-        
+        # Clicar
+        botao.click()
+        print("   ✅ Clique com Selenium executado")
         time.sleep(5)
         
-        # MÉTODO 4: Clique duplo para garantir
-        print("\n🔨 MÉTODO 4: Clique duplo com JavaScript")
-        resultado4 = navegador.execute_script("""
+        # MÉTODO 2: Clique com JavaScript para garantir
+        print("\n🔨 MÉTODO 2: Clique com JavaScript (reforço)")
+        navegador.execute_script("""
             var btn = document.getElementById('btnAtualizar');
             if(btn) {
                 btn.click();
-                btn.click();
-                return 'Clique duplo executado';
+                return true;
             }
-            return 'Falha';
+            return false;
         """)
-        print(f"   ✅ {resultado4}")
+        print("   ✅ Clique com JavaScript executado")
         time.sleep(5)
         
         # VERIFICAR SE O FILTRO FUNCIONOU
@@ -318,7 +341,7 @@ def clicar_botao_atualizar(navegador):
             return document.querySelectorAll('.tabela-calculos-wrapper tbody tr').length;
         """)
         
-        print(f"\n📊 Linhas após todos os cliques: {qtd_linhas}")
+        print(f"\n📊 Linhas após atualização: {qtd_linhas}")
         
         # Mostrar as ÚLTIMAS 5 linhas para verificar o período
         ultimas_linhas = navegador.execute_script("""
@@ -326,34 +349,61 @@ def clicar_botao_atualizar(navegador):
             var ultimasDatas = [];
             var total = linhas.length;
             
-            // Pegar as últimas 5 linhas (ou menos se tiver poucas)
             for(var i = Math.max(0, total - 5); i < total; i++) {
                 var celulas = linhas[i].querySelectorAll('td');
                 if(celulas.length >= 3) {
                     ultimasDatas.push({
                         data: celulas[2]?.innerText || '',
-                        bSaldo: celulas[18]?.innerText || '',
-                        bTotal: celulas[19]?.innerText || ''
+                        bSaldo: celulas[17]?.innerText || '',
+                        bTotal: celulas[18]?.innerText || ''
                     });
                 }
             }
             return ultimasDatas;
         """)
         
-        print("\n📅 ÚLTIMAS 5 LINHS DO RELATÓRIO (para verificar período):")
+        print("\n📅 ÚLTIMAS 5 LINHAS DO RELATÓRIO:")
         for i, linha in enumerate(ultimas_linhas):
             print(f"   {i+1}. Data: {linha.get('data', '')} | BSaldo: {linha.get('bSaldo', '')} | BTotal: {linha.get('bTotal', '')}")
+        
+        # Verificar se a data fim (ontem) aparece nas últimas linhas
+        ontem = (datetime.now() - timedelta(days=1)).strftime("%d/%m")
+        for linha in ultimas_linhas:
+            if ontem in linha.get('data', ''):
+                print(f"\n✅✅ CONFIRMADO: Data {ontem} aparece no relatório!")
+                break
         
         return True
         
     except Exception as e:
         print(f"❌ Erro ao clicar no botão: {e}")
-        return False
+        
+        # Tentar método alternativo se o primeiro falhar
+        try:
+            print("\n🔄 Tentando método alternativo...")
+            navegador.execute_script("""
+                var botoes = document.querySelectorAll('button');
+                for(var i=0; i<botoes.length; i++) {
+                    if(botoes[i].id === 'btnAtualizar' || 
+                       botoes[i].innerText.includes('Atualizar') ||
+                       botoes[i].innerText.includes('ATUALIZAR')) {
+                        botoes[i].click();
+                        return true;
+                    }
+                }
+                return false;
+            """)
+            print("✅ Método alternativo executado")
+            time.sleep(5)
+            return True
+        except:
+            print("❌ Método alternativo também falhou")
+            return False
 
 
-# 🔥 FUNÇÃO 3: Configurar datas E clicar no botão (função principal)
+# 🔥 FUNÇÃO PRINCIPAL CORRIGIDA
 def configurar_datas_relatorio(navegador):
-    """Configura as datas E DEPOIS clica no botão atualizar"""
+    """Configura as datas com send_keys E DEPOIS clica no botão atualizar"""
     
     print("\n" + "=" * 60)
     print("📅 INICIANDO CONFIGURAÇÃO COMPLETA DO RELATÓRIO")
@@ -362,13 +412,13 @@ def configurar_datas_relatorio(navegador):
     # Fechar popup se aparecer
     periodo_pop_up(navegador)
     
-    # PASSO 1: Configurar as datas
-    print("\n📌 PASSO 1: Configurando datas...")
-    if not configurar_datas_apenas(navegador):
+    # PASSO 1: Configurar as datas com send_keys (CORRIGIDO)
+    print("\n📌 PASSO 1: Configurando datas com send_keys...")
+    if not configurar_datas_com_send_keys(navegador):
         print("❌ Falha ao configurar datas")
         return False
     
-    time.sleep(2)
+    time.sleep(3)
     
     # PASSO 2: Clicar no botão atualizar
     print("\n📌 PASSO 2: Clicando no botão Atualizar...")
@@ -433,7 +483,7 @@ def avancar_funcionario(navegador):
 
 
 def extrair_dados(navegador):
-    """Extrai os dados da tabela - VERSÃO FUNCIONAL"""
+    """Extrai os dados da tabela"""
     try:
         print("🔍 Extraindo dados...")
         
@@ -451,8 +501,8 @@ def extrair_dados(navegador):
                 const celulas = linha.querySelectorAll('td');
                 if (celulas.length >= 20) {
                     const data = celulas[2]?.innerText?.trim() || '';
-                    const bSaldo = celulas[18]?.innerText?.trim() || '';
-                    const bTotal = celulas[19]?.innerText?.trim() || '';
+                    const bSaldo = celulas[17]?.innerText?.trim() || '';
+                    const bTotal = celulas[18]?.innerText?.trim() || '';
                     
                     if (data && data !== '') {
                         dados.push([data, bSaldo, bTotal]);

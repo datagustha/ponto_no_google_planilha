@@ -43,9 +43,11 @@ import time
 
 # inserir_dados.py
 import pandas as pd
+import os
+
 
 def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_linha=38):
-    """Versão corrigida - limpa até linha 38 para evitar dados antigos"""
+    """Versão corrigida - formatação condicional (Git vs Local)"""
     
     print(f"\n📤 Salvando dados na aba: '{nome_aba}'")
     print(f"📊 DataFrame com {len(df_ponto)} linhas")
@@ -59,9 +61,11 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
     colunas_disponiveis = list(df_ponto.columns)
     print(f"📋 Colunas no DataFrame: {colunas_disponiveis}")
     
-    # 👉 ADICIONE ESTA LINHA PARA VER OS DADOS ORIGINAIS
-    print(f"\n🔍 DADOS ORIGINAIS DO DATAFRAME (primeiras 5 linhas):")
-    print(df_ponto.head().to_string(index=False))
+    # 👉 DETECTAR SE ESTÁ RODANDO NO GITHUB ACTIONS
+    MODO_GITHUB = os.getenv('GITHUB_ACTIONS') == 'true'
+    
+    print(f"\n🔍 DADOS ORIGINAIS DO DATAFRAME (últimas 5 linhas):")
+    print(df_ponto.tail().to_string(index=False))
     
     # 📅 DICIONÁRIO PARA TRADUZIR DIAS DA SEMANA
     dias_traducao = {
@@ -83,8 +87,8 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
         BSaldo = row.get('BSaldo', '')
         BTotal = row.get('BTotal', '')
         
-        # 🔥 CONVERTER DATA DO FORMATO US PARA BR E TRADUZIR DIA DA SEMANA
-        if data and ' - ' in data:
+        # 🔥 CONVERSÃO CONDICIONAL: SÓ APLICA SE ESTIVER NO GITHUB
+        if MODO_GITHUB and data and ' - ' in data:
             partes_data = data.split(' - ')
             if len(partes_data) == 2:
                 data_numero = partes_data[0]  # Ex: "02/01/2026"
@@ -104,11 +108,16 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
                         
                         # Reorganizar para formato BR
                         data_br = f"{dia_us}/{mes_us}/{ano}"
-                        print(f"   🔄 Convertendo data: {data_numero} (US) → {data_br} (BR)")
+                        print(f"   🔄 (GitHub) Convertendo data: {data_numero} (US) → {data_br} (BR)")
                         
                         # Remontar a data completa com dia em português
                         data = f"{data_br} - {dia_portugues}"
                         print(f"   🔄 Data final: {data}")
+        else:
+            if MODO_GITHUB:
+                print(f"   ℹ️ (GitHub) Data já está no formato correto: {data}")
+            else:
+                print(f"   ℹ️ (Local) Mantendo data original: {data}")
         
         # Converter para string
         if isinstance(BSaldo, (list, tuple)):
@@ -147,22 +156,14 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
         
         dados_preparados.append([data, BSaldo, BTotal])
     
-    print(f"\n📝 Dados preparados com formato BR e dias em português: {len(dados_preparados)} linhas")
-    
-    # Mostrar exemplo dos dados traduzidos
-    print(f"\n🔍 EXEMPLO DOS DADOS CONVERTIDOS (primeiras 5 linhas):")
-    for i, linha in enumerate(dados_preparados[:5]):
-        print(f"   Linha {i+1}: {linha}")
+    print(f"\n📝 Dados preparados: {len(dados_preparados)} linhas")
     
     # 🔥 ALTERAÇÃO PRINCIPAL: Limpar até linha fixa
     linha_inicio = 6
     linha_fim_dados = linha_inicio + len(dados_preparados) - 1
     
     # Define dois ranges diferentes:
-    # 1. Range para LIMPAR (até linha 38)
     range_limpar = f"{nome_aba}!A{linha_inicio}:C{limpar_ate_linha}"
-    
-    # 2. Range para INSERIR (só onde tem dados)
     range_inserir = f"{nome_aba}!A{linha_inicio}:C{linha_fim_dados}"
     
     print(f"\n📍 Range para limpar: {range_limpar}")
@@ -172,7 +173,7 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
     try:
         body = {'values': dados_preparados}
         
-        # 🔥 PRIMEIRO: Limpar até a linha 38 (ou a linha que você definir)
+        # 🔥 PRIMEIRO: Limpar até a linha 38
         print(f"🧹 Limpando de A6 até C{limpar_ate_linha}...")
         try:
             service.spreadsheets().values().clear(
@@ -197,7 +198,7 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
         print(f"✅ {nome_aba}: {updated_cells} células atualizadas")
         print(f"   Dados inseridos nas linhas {linha_inicio} a {linha_fim_dados}")
         
-        # 🔥 OPCIONAL: Se quiser também limpar o que sobrar entre os dados e linha 38
+        # 🔥 Limpar sobra entre os dados e linha 38
         if linha_fim_dados < limpar_ate_linha:
             range_sobra = f"{nome_aba}!A{linha_fim_dados + 1}:C{limpar_ate_linha}"
             try:
@@ -216,13 +217,6 @@ def inserir_dados_ponto(service, spreadsheet_id, df_ponto, nome_aba, limpar_ate_
         print(f"❌ Erro ao salvar dados de {nome_aba}:")
         print(f"   Tipo: {type(e).__name__}")
         print(f"   Mensagem: {str(e)}")
-        
-        if "Unable to parse range" in str(e):
-            print(f"\n💡 DICA: A aba '{nome_aba}' não existe na planilha!")
-            print(f"   Verifique se o nome da aba está correto.")
-        elif "PERMISSION_DENIED" in str(e):
-            print(f"\n💡 DICA: Problema de permissão no Google Sheets!")
-            print(f"   Verifique se o token.json tem acesso à planilha.")
         
         return None
 
