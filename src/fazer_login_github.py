@@ -1,21 +1,22 @@
-# src/fazer_login_github.py - VERSÃO FINAL DEFINITIVA PARA GITHUB ACTIONS
+# src/fazer_login_github.py - VERSÃO HIPER SIMPLIFICADA
 
 import os
 import time
+import pathlib
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 def login_github_actions():
-    """Versão para GitHub Actions com navegação direta"""
+    """Versão simplificada para GitHub Actions"""
     
     print("=" * 58)
     print("🔧 CONFIGURANDO CHROME PARA GITHUB ACTIONS")
     print("=" * 58)
     
+    # Configuração do Chrome
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--no-sandbox")
@@ -23,75 +24,76 @@ def login_github_actions():
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--start-maximized")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option('useAutomationExtension', False)
     
-    # User agent
-    chrome_options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    
-    print("🚀 Chrome iniciado com Selenium Manager")
+    print("🚀 Iniciando Chrome headless...")
     navegador = webdriver.Chrome(options=chrome_options)
     
+    # Executar script para evitar detecção
+    navegador.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    
     try:
-        # 1. Acessar site
-        print("🌐 Acessando site...")
-        navegador.get("https://pontoweb.secullum.com.br/")
+        # PASSO 1: Ir direto para a página de login (evitar o botão inicial)
+        print("\n🌐 Acessando página de login diretamente...")
+        navegador.get("https://app.secullum.com.br/Account/Login")
         time.sleep(5)
         
-        # 2. Clicar no botão
-        print("🔍 Procurando botão 'Acessar ponto Web'...")
-        botao = WebDriverWait(navegador, 20).until(
-            EC.element_to_be_clickable((By.XPATH, "//span[contains(text(), 'Acessar ponto Web')]"))
-        )
-        botao.click()
-        print("✅ Clicou em 'Acessar ponto Web'")
-        time.sleep(3)
+        # PASSO 2: Fazer login
+        print("🔐 FAZENDO LOGIN...")
         
-        # 3. Fazer login
-        print("🔐 REALIZANDO LOGIN...")
-        
-        email = WebDriverWait(navegador, 20).until(
+        # Email
+        campo_email = WebDriverWait(navegador, 20).until(
             EC.presence_of_element_located((By.ID, "login"))
         )
-        email.send_keys(os.getenv("EMAIL_SISTEMA"))
+        campo_email.clear()
+        campo_email.send_keys(os.getenv("EMAIL_SISTEMA"))
         print("✅ Email inserido")
         
-        senha = navegador.find_element(By.ID, "senha")
-        senha.send_keys(os.getenv("SENHA_SISTEMA"))
+        # Senha
+        campo_senha = navegador.find_element(By.ID, "senha")
+        campo_senha.clear()
+        campo_senha.send_keys(os.getenv("SENHA_SISTEMA"))
         print("✅ Senha inserida")
         
-        botao_entrar = navegador.find_element(By.XPATH, "//button[contains(text(), 'Entrar')]")
+        # Botão entrar
+        botao_entrar = navegador.find_element(By.XPATH, "//button[@type='submit']")
         botao_entrar.click()
         print("🖱 Clicou em Entrar")
-        time.sleep(5)
         
-        # Verificar popup
-        try:
-            popup = navegador.find_element(By.ID, "btnYes")
-            popup.click()
-            print("✅ Fechou popup")
-            time.sleep(2)
-        except:
-            print("ℹ️ Nenhum popup exibido")
+        # Aguardar login
+        time.sleep(8)
         
-        print("✅ LOGIN REALIZADO COM SUCESSO")
+        # PASSO 3: Verificar se logou (tirar print)
+        print("\n📸 Tirando print após login...")
+        pasta_prints = os.path.join(pathlib.Path(__file__).parent.parent, "prints")
+        os.makedirs(pasta_prints, exist_ok=True)
+        navegador.save_screenshot(os.path.join(pasta_prints, "apos_login.png"))
         
-        # AGORA VAMOS DIRETO PARA RELATÓRIOS AQUI MESMO
-        print("\n🔍 TENTANDO ACESSAR RELATÓRIOS DIRETAMENTE...")
-        
-        # Tentar navegação direta
+        # PASSO 4: Ir para relatórios
+        print("\n📊 Indo para relatórios...")
         navegador.get("https://pontoweb.secullum.com.br/#/homerelatorios")
-        time.sleep(10)
+        time.sleep(8)
         
-        if "relatorios" in navegador.current_url.lower():
-            print("✅✅✅ ACESSOU RELATÓRIOS!")
-            
-            # Tirar print para confirmar
-            pasta_prints = os.path.join(pathlib.Path(__file__).parent.parent, "prints")
-            os.makedirs(pasta_prints, exist_ok=True)
-            navegador.save_screenshot(os.path.join(pasta_prints, "apos_login.png"))
+        # Print da página de relatórios
+        navegador.save_screenshot(os.path.join(pasta_prints, "relatorios.png"))
+        print("✅ Print da página de relatórios salvo")
         
+        print("\n✅✅✅ LOGIN E ACESSO A RELATÓRIOS CONCLUÍDOS!")
         return navegador
         
     except Exception as e:
-        print(f"❌ Erro no login: {e}")
+        print(f"\n❌ ERRO NO LOGIN: {e}")
+        
+        # Tentar tirar print do erro
+        try:
+            pasta_prints = os.path.join(pathlib.Path(__file__).parent.parent, "prints")
+            os.makedirs(pasta_prints, exist_ok=True)
+            navegador.save_screenshot(os.path.join(pasta_prints, "erro_login.png"))
+            print("📸 Print do erro salvo")
+        except:
+            pass
+        
         navegador.quit()
         return None
