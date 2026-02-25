@@ -1,4 +1,4 @@
-# src/fazer_login_github.py - VERSÃO FINAL ESTÁVEL PARA GITHUB ACTIONS
+# src/fazer_login_github.py - VERSÃO FINAL DEFINITIVA PARA GITHUB ACTIONS
 
 import os
 import time
@@ -8,13 +8,12 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 
 
 def login_github_actions():
     """
     Login + navegação completa para GitHub Actions (headless)
+    Usando Selenium Manager (mais estável que webdriver-manager)
     """
     print("=" * 60)
     print("🔧 CONFIGURANDO CHROME PARA GITHUB ACTIONS")
@@ -31,10 +30,10 @@ def login_github_actions():
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option("useAutomationExtension", False)
 
-    service = Service(ChromeDriverManager().install())
-    navegador = webdriver.Chrome(service=service, options=chrome_options)
+    # 👉 Selenium Manager resolve driver automaticamente
+    navegador = webdriver.Chrome(options=chrome_options)
 
-    # Remover flag de automação
+    # Remove flag webdriver
     navegador.execute_cdp_cmd(
         "Page.addScriptToEvaluateOnNewDocument",
         {
@@ -46,7 +45,7 @@ def login_github_actions():
         },
     )
 
-    print("🚀 Chrome iniciado em modo headless")
+    print("🚀 Chrome iniciado com Selenium Manager")
 
     # =========================================================
     # ACESSAR SITE
@@ -95,7 +94,7 @@ def login_github_actions():
         time.sleep(6)
 
         # =========================================================
-        # FECHAR POPUP SE EXISTIR
+        # FECHAR POPUP
         # =========================================================
 
         try:
