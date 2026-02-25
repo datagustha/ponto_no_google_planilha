@@ -1,8 +1,9 @@
-# src/fazer_login_github.py - VERSÃO HIPER SIMPLIFICADA
+# src/fazer_login_github.py - VERSÃO COM CORREÇÃO DE DNS
 
 import os
 import time
 import pathlib
+import socket
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -10,11 +11,27 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 def login_github_actions():
-    """Versão simplificada para GitHub Actions"""
+    """Versão com correção de DNS para GitHub Actions"""
     
     print("=" * 58)
     print("🔧 CONFIGURANDO CHROME PARA GITHUB ACTIONS")
     print("=" * 58)
+    
+    # TESTAR RESOLUÇÃO DE DNS PRIMEIRO
+    print("\n🔍 Testando resolução de DNS...")
+    dominios_teste = [
+        "pontoweb.secullum.com.br",
+        "app.secullum.com.br", 
+        "www.secullum.com.br",
+        "secullum.com.br"
+    ]
+    
+    for dominio in dominios_teste:
+        try:
+            ip = socket.gethostbyname(dominio)
+            print(f"   ✅ {dominio} -> {ip}")
+        except Exception as e:
+            print(f"   ❌ {dominio}: {e}")
     
     # Configuração do Chrome
     chrome_options = Options()
@@ -25,23 +42,43 @@ def login_github_actions():
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--start-maximized")
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    
+    # IMPORTANTE: Adicionar flags de DNS
+    chrome_options.add_argument("--dns-prefetch-disable")
+    chrome_options.add_argument("--disable-features=TranslateUI,BlinkGenPropertyTrees")
+    
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
     
-    print("🚀 Iniciando Chrome headless...")
+    print("\n🚀 Iniciando Chrome headless...")
     navegador = webdriver.Chrome(options=chrome_options)
     
     # Executar script para evitar detecção
     navegador.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     
     try:
-        # PASSO 1: Ir direto para a página de login (evitar o botão inicial)
-        print("\n🌐 Acessando página de login diretamente...")
-        navegador.get("https://app.secullum.com.br/Account/Login")
-        time.sleep(5)
+        # TENTAR PRIMEIRO O DOMÍNIO PRINCIPAL (que já funcionou antes)
+        print("\n🌐 Tentando acesso direto ao PontoWeb...")
+        navegador.get("https://pontoweb.secullum.com.br/")
+        time.sleep(8)
         
-        # PASSO 2: Fazer login
-        print("🔐 FAZENDO LOGIN...")
+        print(f"📍 URL atual: {navegador.current_url}")
+        
+        # Verificar se precisa clicar no botão "Acessar ponto Web"
+        if "Account/Login" not in navegador.current_url:
+            try:
+                print("🔍 Procurando botão 'Acessar ponto Web'...")
+                botao = WebDriverWait(navegador, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//span[contains(text(), 'Acessar ponto Web')]"))
+                )
+                botao.click()
+                print("✅ Clicou no botão")
+                time.sleep(5)
+            except:
+                print("ℹ️ Botão não encontrado, talvez já esteja na página de login")
+        
+        # AGORA FAZER LOGIN
+        print("\n🔐 FAZENDO LOGIN...")
         
         # Email
         campo_email = WebDriverWait(navegador, 20).until(
@@ -65,26 +102,35 @@ def login_github_actions():
         # Aguardar login
         time.sleep(8)
         
-        # PASSO 3: Verificar se logou (tirar print)
-        print("\n📸 Tirando print após login...")
+        # VERIFICAR SE LOGOU
         pasta_prints = os.path.join(pathlib.Path(__file__).parent.parent, "prints")
         os.makedirs(pasta_prints, exist_ok=True)
-        navegador.save_screenshot(os.path.join(pasta_prints, "apos_login.png"))
         
-        # PASSO 4: Ir para relatórios
+        # Print após login
+        navegador.save_screenshot(os.path.join(pasta_prints, "apos_login.png"))
+        print("📸 Print após login salvo")
+        
+        # IR PARA RELATÓRIOS
         print("\n📊 Indo para relatórios...")
         navegador.get("https://pontoweb.secullum.com.br/#/homerelatorios")
         time.sleep(8)
         
         # Print da página de relatórios
         navegador.save_screenshot(os.path.join(pasta_prints, "relatorios.png"))
-        print("✅ Print da página de relatórios salvo")
+        print("📸 Print da página de relatórios salvo")
         
-        print("\n✅✅✅ LOGIN E ACESSO A RELATÓRIOS CONCLUÍDOS!")
-        return navegador
+        print(f"\n📍 URL final: {navegador.current_url}")
+        
+        if "relatorios" in navegador.current_url.lower():
+            print("\n✅✅✅ LOGIN E ACESSO A RELATÓRIOS CONCLUÍDOS!")
+            return navegador
+        else:
+            print("\n⚠️ Pode não ter entrado em relatórios, mas vamos continuar...")
+            return navegador
         
     except Exception as e:
         print(f"\n❌ ERRO NO LOGIN: {e}")
+        print(f"📍 URL no erro: {navegador.current_url}")
         
         # Tentar tirar print do erro
         try:
