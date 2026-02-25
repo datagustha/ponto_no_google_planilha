@@ -22,47 +22,83 @@ MODO_GITHUB = os.getenv('GITHUB_ACTIONS') == 'true'
 # =========================================================
 
 def acessar_calculos(navegador):
+    """Acessa a área de cálculos - VERSÃO SUPER SIMPLES"""
+    
     print("\n" + "=" * 50)
     print("🔍 ACESSANDO RELATÓRIOS / CÁLCULOS")
     print("=" * 50)
-
-    time.sleep(5)
-
-    wait = WebDriverWait(navegador, 30)
-
-    # Tentativa 1 — Menu Relatórios
+    
+    # Tirar print antes de começar
+    tirar_print(navegador, "00_antes_acessar.png")
+    
+    # Aguardar um tempo generoso
+    print("⏳ Aguardando 20 segundos para página carregar...")
+    time.sleep(20)
+    
+    # Tentar navegação direta PRIMEIRO (mais confiável)
     try:
-        relatorio = wait.until(
-            EC.element_to_be_clickable((By.XPATH, "//span[contains(text(), 'Relatórios')]"))
-        )
-        relatorio.click()
-        time.sleep(3)
-    except:
-        pass
-
-    # Tentativa 2 — Botão Cálculos
+        print("📋 Tentando navegação direta...")
+        navegador.get("https://pontoweb.secullum.com.br/#/homerelatorios")
+        time.sleep(10)
+        
+        # Verificar se a URL mudou
+        if "relatorios" in navegador.current_url.lower():
+            print("✅✅✅ NAVEGAÇÃO DIRETA FUNCIONOU!")
+            tirar_print(navegador, "01_acessou_calculos.png")
+            return True
+    except Exception as e:
+        print(f"⚠️ Navegação direta falhou: {e}")
+    
+    # Se navegação direta falhar, tentar clicar no menu
     try:
-        calculo = wait.until(EC.element_to_be_clickable((By.ID, "calculos")))
-        calculo.click()
-        time.sleep(4)
-        print("✅ Entrou em Cálculos")
-        return True
-    except:
-        pass
-
-    # Tentativa 3 — Busca genérica
-    try:
-        elementos = navegador.find_elements(By.XPATH, "//*[contains(text(), 'Cálculos')]")
-        for e in elementos:
-            if e.is_displayed() and e.is_enabled():
-                e.click()
-                time.sleep(4)
-                print("✅ Entrou em Cálculos (fallback)")
-                return True
-    except:
-        pass
-
-    print("❌ NÃO CONSEGUIU ACESSAR CÁLCULOS")
+        print("📋 Tentando encontrar menu...")
+        
+        # Lista de possíveis textos do menu
+        textos_menu = ["Relatórios", "RELATÓRIOS", "relatorios", "Cálculos", "CÁLCULOS", "calculos"]
+        
+        for texto in textos_menu:
+            try:
+                # Procurar por qualquer elemento que contenha o texto
+                elemento = navegador.find_element(By.XPATH, f"//*[contains(text(), '{texto}')]")
+                if elemento.is_displayed():
+                    print(f"✅ Encontrou: '{texto}'")
+                    elemento.click()
+                    print(f"🖱️ Clicou em '{texto}'")
+                    time.sleep(5)
+                    
+                    # Verificar se entrou
+                    if "relatorios" in navegador.current_url.lower():
+                        print("✅✅✅ ACESSO CONFIRMADO!")
+                        tirar_print(navegador, "01_acessou_calculos.png")
+                        return True
+            except:
+                continue
+    except Exception as e:
+        print(f"⚠️ Erro ao clicar no menu: {e}")
+    
+    # ÚLTIMA TENTATIVA: JavaScript para listar tudo
+    print("\n📋 DIAGNÓSTICO - Links na página:")
+    links = navegador.execute_script("""
+        const elementos = document.querySelectorAll('a, button, span, div');
+        const resultados = [];
+        elementos.forEach(el => {
+            if(el.innerText && el.innerText.trim()) {
+                resultados.push({
+                    texto: el.innerText.substring(0, 50),
+                    tag: el.tagName,
+                    visivel: el.offsetParent !== null
+                });
+            }
+        });
+        return resultados;
+    """)
+    
+    for i, link in enumerate(links[:30]):  # Mostrar primeiros 30
+        print(f"   {i+1}. {link['tag']}: '{link['texto']}' (visível: {link['visivel']})")
+    
+    # Print final
+    tirar_print(navegador, "99_erro_acesso.png")
+    print("\n❌❌❌ NÃO CONSEGUIU ACESSAR CÁLCULOS")
     return False
 
 
