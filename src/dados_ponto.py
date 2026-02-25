@@ -278,7 +278,7 @@ def extrair_dados(navegador):
 # PROCESSAR TODOS FUNCIONÁRIOS
 # =========================================================
 
-def processar_todos_funcionarios(navegador, callback, max_tentativas=40):
+def processar_todos_funcionarios(navegador, callback_processar, max_tentativas=40):
     print("\n🚀 INICIANDO PROCESSAMENTO")
 
     if not acessar_calculos(navegador):
@@ -313,7 +313,7 @@ def processar_todos_funcionarios(navegador, callback, max_tentativas=40):
         df = extrair_dados(navegador)
 
         if not df.empty:
-            if callback(nome, df):
+            if callback_processar(nome, df):
                 contador += 1
                 print(f"✅ Processado: {nome}")
         else:
